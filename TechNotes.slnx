@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".gitignore" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="TechNotes.API/TechNotes.API.csproj" />
+    <Project Path="TechNotes.Application/TechNotes.Application.csproj" Id="b76bfed2-cc98-4ba9-8936-3bf901875a32" />
+    <Project Path="TechNotes.Domain/TechNotes.Domain.csproj" Id="40a82dee-e416-48e2-a7b7-f229820d834c" />
+    <Project Path="TechNotes.Infrastructure/TechNotes.Infrastructure.csproj" Id="b1f2fe36-ea34-4b0d-afbe-dcaf4c0204c8" />
+    <Project Path="TechNotes.Persistence/TechNotes.Persistence.csproj" Id="543fd0be-ac24-4e5a-9852-1afa3e6068f0" />
+  </Folder>
+</Solution>

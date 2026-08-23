@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>technotes-api-9dba6e6c-03b6-48ab-a5f7-3de75d8273e7</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\TechNotes.Application\TechNotes.Application.csproj" />
+    <ProjectReference Include="..\TechNotes.Infrastructure\TechNotes.Infrastructure.csproj" />
+    <ProjectReference Include="..\TechNotes.Persistence\TechNotes.Persistence.csproj" />
+  </ItemGroup>
+</Project>
