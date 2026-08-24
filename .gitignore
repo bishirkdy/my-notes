@@ -11,3 +11,6 @@ obj/
 
 # Environment files
 .env
+
+#Work folder
+work/
