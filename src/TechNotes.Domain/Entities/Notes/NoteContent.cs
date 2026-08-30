@@ -1,10 +1,11 @@
 
 
+using TechNotes.Domain.Common;
 using TechNotes.Domain.Enums;
 // Represents one flexible content block inside a note section.
 namespace TechNotes.Domain.Entities.Notes
 {
-    public class NoteContent
+    public class NoteContent : BaseEntity
     {
         public Guid SectionId { get; set; }
         public NoteSection Section { get; set; } = null!;
