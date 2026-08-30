@@ -5,6 +5,7 @@ using TechNotes.Application.Settings.Auth;
 using TechNotes.Domain.Constants;
 using TechNotes.Domain.Entities.Identity;
 using TechNotes.Persistence.Data;
+
 namespace TechNotes.Persistence.Seeder;
 
 // Adds the required Admin and User roles, and optionally creates the first administrator account.

@@ -3,15 +3,14 @@ using TechNotes.Domain.Entities.Identity;
 
 namespace TechNotes.Domain.Entities.Notes;
 
-// A user-owned folder that can contain notes and nested folders.
-public sealed class Folder : BaseEntity
+// Groups a user's notes into logical collections.
+public class Folder : BaseEntity
 {
-    public Guid OwnerId { get; set; }
-    public AppUser Owner { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public AppUser User { get; set; } = null!;
+    public string Name { get; set; } = string.Empty;
     public Guid? ParentFolderId { get; set; }
     public Folder? ParentFolder { get; set; }
-    public string Name { get; set; } = string.Empty;
-
-    public ICollection<Folder> ChildFolders { get; set; } = new List<Folder>();
-    public ICollection<Note> Notes { get; set; } = new List<Note>();
+    public ICollection<Folder> Children { get; set; } = [];
+    public ICollection<Note> Notes { get; set; } = [];
 }

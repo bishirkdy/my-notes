@@ -24,4 +24,8 @@
     <ProjectReference Include="..\TechNotes.Domain\TechNotes.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Configurations\" />
+  </ItemGroup>
+
 </Project>

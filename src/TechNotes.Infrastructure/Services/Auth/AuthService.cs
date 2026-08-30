@@ -1,54 +1,38 @@
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TechNotes.Application.DTOs.Auth;
+using TechNotes.Application.Interfaces.Repositories;
 using TechNotes.Application.Interfaces.Services.Auth;
 using TechNotes.Application.Results.Auth;
 using TechNotes.Application.Settings.Auth;
 using TechNotes.Domain.Constants;
 using TechNotes.Domain.Entities.Identity;
 using TechNotes.Domain.Enums;
-using TechNotes.Persistence.Data;
 
 namespace TechNotes.Infrastructure.Services.Auth;
 
-// Handles registration, login, refresh-token rotation, and logout.
-public sealed class AuthService(
-    AppDbContext dbContext,
-    IPasswordHasher passwordHasher,
-    IJwtTokenService jwtTokenService,
-    IOptions<JwtOptions> jwtOptions) : IAuthService
+public sealed class AuthService(IAuthRepository authRepository, IPasswordHasher passwordHasher, IJwtTokenService jwtTokenService, IOptions<JwtOptions> jwtOptions) : IAuthService
 {
     private readonly JwtOptions _jwtOptions = jwtOptions.Value;
 
-    public async Task<RefreshResult> RegisterAsync(
-        RegisterRequest request,
-        CancellationToken cancellationToken)
+    public async Task<RefreshResult> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
         var userName = request.UserName.Trim();
 
-        var alreadyExists = await dbContext.Users.AnyAsync(
-            user =>
-                user.Email == email ||
-                user.UserName == userName,
-            cancellationToken);
+        var alreadyExists = await authRepository.UserExistsAsync(email,userName,cancellationToken);
 
         if (alreadyExists)
         {
-            throw new ArgumentException(
-                "An account with that email address or username already exists.");
+            throw new ArgumentException("An account with that email address or username already exists.");
         }
 
-        var userRole = await dbContext.Roles.SingleOrDefaultAsync(
-            role => role.Name == RoleNames.User,
-            cancellationToken);
+        var userRole = await authRepository.GetRoleByNameAsync(RoleNames.User,cancellationToken);
 
         if (userRole is null)
         {
-            throw new InvalidOperationException(
-                "Default User role has not been seeded.");
+            throw new InvalidOperationException("Default User role has not been seeded.");
         }
 
         var user = new AppUser
@@ -63,35 +47,24 @@ public sealed class AuthService(
             Role = userRole
         });
 
-        dbContext.Users.Add(user);
+        await authRepository.AddUserAsync(user,cancellationToken);
+        await authRepository.SaveChangesAsync(cancellationToken);
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return await IssueTokensAsync(
-            user,
-            [RoleNames.User],
-            cancellationToken);
+        return await IssueTokensAsync(user, [RoleNames.User], cancellationToken);
     }
 
-    public async Task<RefreshResult?> LoginAsync(
-        LoginRequest request,
-        CancellationToken cancellationToken)
+    public async Task<RefreshResult?> LoginAsync(LoginRequest request, CancellationToken cancellationToken)
     {
         var email = request.Email.Trim().ToLowerInvariant();
 
-        var user = await LoadUserWithRolesAsync(
-            email,
-            cancellationToken);
+        var user = await authRepository.GetUserWithRolesAsync(email,cancellationToken);
 
-        if (user is null ||
-            user.Status != AccountStatus.Active)
+        if (user is null || user.Status != AccountStatus.Active)
         {
             return null;
         }
 
-        var isValid = passwordHasher.VerifyPassword(
-            request.Password,
-            user.PasswordHash);
+        var isValid = passwordHasher.VerifyPassword(request.Password, user.PasswordHash);
 
         if (!isValid)
         {
@@ -114,12 +87,9 @@ public sealed class AuthService(
     {
         var tokenHash = HashToken(refreshToken);
 
-        var storedToken = await dbContext.RefreshTokens
-            .Include(token => token.User)
-            .ThenInclude(user => user.UserRoles)
-            .ThenInclude(userRole => userRole.Role)
-            .SingleOrDefaultAsync(
-                token => token.Token == tokenHash,
+        var storedToken =
+            await authRepository.GetRefreshTokenWithUserAsync(
+                tokenHash,
                 cancellationToken);
 
         if (storedToken is null ||
@@ -130,7 +100,7 @@ public sealed class AuthService(
             return null;
         }
 
-        // Invalidate the old refresh token.
+        // Revoke old refresh token.
         storedToken.RevokedAtUtc = DateTime.UtcNow;
 
         var roles = storedToken.User.UserRoles
@@ -149,17 +119,16 @@ public sealed class AuthService(
     {
         var tokenHash = HashToken(refreshToken);
 
-        var storedToken = await dbContext.RefreshTokens
-            .SingleOrDefaultAsync(
-                token => token.Token == tokenHash,
-                cancellationToken);
+        var storedToken = await authRepository.GetRefreshTokenAsync(
+            tokenHash,
+            cancellationToken);
 
         if (storedToken is not null &&
             storedToken.RevokedAtUtc is null)
         {
             storedToken.RevokedAtUtc = DateTime.UtcNow;
 
-            await dbContext.SaveChangesAsync(
+            await authRepository.SaveChangesAsync(
                 cancellationToken);
         }
     }
@@ -175,32 +144,24 @@ public sealed class AuthService(
         var refreshExpiresAtUtc = DateTime.UtcNow.AddDays(
             _jwtOptions.RefreshTokenDays);
 
-        dbContext.RefreshTokens.Add(new RefreshToken
+        var refreshTokenEntity = new RefreshToken
         {
             UserId = user.Id,
             Token = HashToken(refreshToken),
             ExpiresAtUtc = refreshExpiresAtUtc
-        });
+        };
 
-        await dbContext.SaveChangesAsync(
+        await authRepository.AddRefreshTokenAsync(
+            refreshTokenEntity,
+            cancellationToken);
+
+        await authRepository.SaveChangesAsync(
             cancellationToken);
 
         return new RefreshResult(
             jwtTokenService.CreateAccessToken(user, roles),
             refreshToken,
             refreshExpiresAtUtc);
-    }
-
-    private Task<AppUser?> LoadUserWithRolesAsync(
-        string email,
-        CancellationToken cancellationToken)
-    {
-        return dbContext.Users
-            .Include(user => user.UserRoles)
-            .ThenInclude(userRole => userRole.Role)
-            .SingleOrDefaultAsync(
-                user => user.Email == email,
-                cancellationToken);
     }
 
     private static string HashToken(string token)

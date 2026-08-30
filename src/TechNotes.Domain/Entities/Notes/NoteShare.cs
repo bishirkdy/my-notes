@@ -4,12 +4,12 @@ using TechNotes.Domain.Enums;
 
 namespace TechNotes.Domain.Entities.Notes;
 
-// Grants one user a specific level of access to another user's note.
-public sealed class NoteShare : BaseEntity
+// Grants another user controlled access to a note.
+public class NoteShare : BaseEntity
 {
     public Guid NoteId { get; set; }
     public Note Note { get; set; } = null!;
-    public Guid RecipientId { get; set; }
-    public AppUser Recipient { get; set; } = null!;
-    public SharePermission Permission { get; set; } = SharePermission.View;
+    public Guid UserId { get; set; }
+    public AppUser User { get; set; } = null!;
+    public SharePermission Permission { get; set; }
 }

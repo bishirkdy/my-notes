@@ -3,13 +3,12 @@ using TechNotes.Domain.Entities.Identity;
 
 namespace TechNotes.Domain.Entities.Notes;
 
-// A user-owned category for grouping related notes.
-public sealed class Category : BaseEntity
+// Classifies notes into reusable subjects such as C#, JavaScript, or SQL.
+public class Category : BaseEntity
 {
-    public Guid OwnerId { get; set; }
-    public AppUser Owner { get; set; } = null!;
+    public Guid UserId { get; set; }
+    public AppUser User { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
-    public string? Color { get; set; }
-
-    public ICollection<Note> Notes { get; set; } = new List<Note>();
+    public string? Description { get; set; }
+    public ICollection<Note> Notes { get; set; } = [];
 }
