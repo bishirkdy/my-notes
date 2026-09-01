@@ -24,6 +24,9 @@ namespace TechNotes.Persistence
 
             //generic
             services.AddScoped(typeof(IGenericRepository<>),typeof(GenericRepository<>));
+            
+            //Note
+            services.AddScoped<INoteRepository, NoteRepository>();
 
             //Auth
             services.AddScoped<IAuthRepository, AuthRepository>();

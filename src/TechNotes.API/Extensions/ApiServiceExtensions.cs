@@ -10,7 +10,8 @@ public static class ApiServiceExtensions
             .AddExceptionHandling()
             .AddApiControllers()
             .AddDatabaseSeeding(configuration)
-            .AddSwaggerDocumentation();
+            .AddSwaggerDocumentation()
+            .AddMediatR();
 
         return services;
     }

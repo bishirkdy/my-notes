@@ -4,40 +4,47 @@ using TechNotes.Persistence.Data;
 
 namespace TechNotes.Persistence.Repositories;
 
-public class GenericRepository<T> : IGenericRepository<T>
+public class GenericRepository<T>(AppDbContext context) : IGenericRepository<T>
     where T : class
 {
-    protected readonly AppDbContext _context;
-    protected readonly DbSet<T> _dbSet;
+    protected readonly DbSet<T> DbSet = context.Set<T>();
 
-    public GenericRepository(AppDbContext context)
+    // Retrieves one entity by its primary key.
+    public async Task<T?> GetByIdAsync(Guid id,CancellationToken cancellationToken = default)
     {
-        _context = context;
-        _dbSet = context.Set<T>();
+        return await DbSet.FindAsync([id],cancellationToken);
     }
 
-    public async Task<T?> GetByIdAsync(Guid id)
+    // Retrieves all entities from the corresponding table.
+    public async Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        return await _dbSet.FindAsync(id);
+        return await DbSet
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
     }
 
-    public async Task<IEnumerable<T>> GetAllAsync()
+    // Adds a new entity to the current database context.
+    public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
-        return await _dbSet.ToListAsync();
+        await DbSet.AddAsync(entity, cancellationToken);
     }
 
-    public async Task AddAsync(T entity)
-    {
-        await _dbSet.AddAsync(entity);
-    }
-
+    // Marks an entity as modified.
     public void Update(T entity)
     {
-        _dbSet.Update(entity);
+        DbSet.Update(entity);
     }
 
+    // Marks an entity for deletion.
     public void Delete(T entity)
     {
-        _dbSet.Remove(entity);
+        DbSet.Remove(entity);
+    }
+
+    // Saves all tracked changes through the DbContext.
+    public async Task SaveChangesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        await context.SaveChangesAsync(cancellationToken);
     }
 }

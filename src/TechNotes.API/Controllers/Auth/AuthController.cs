@@ -5,12 +5,12 @@ using TechNotes.Application.DTOs.Auth;
 using TechNotes.Application.Interfaces.Services.Auth;
 using TechNotes.Application.Results.Auth;
 
-namespace TechNotes.API.Controllers.User;
+namespace TechNotes.API.Controllers.Auth;
 
 // Provides registration, login, refresh, logout, and current-user endpoints for normal and admin users.
 [ApiController]
-[Route("api/v1/user/auth")]
-public sealed class UserAuthController(IAuthService authService) : ControllerBase
+[Route("api/v1/auth")]
+public sealed class AuthController(IAuthService authService) : ControllerBase
 {
     private const string RefreshCookieName = "technotes_refresh_token";
 

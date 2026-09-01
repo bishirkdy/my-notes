@@ -4,24 +4,35 @@ using Microsoft.Extensions.Configuration;
 
 namespace TechNotes.Persistence.Data;
 
-// Used only by EF Core tools, allowing migrations to be created without starting the web API.
+// Creates AppDbContext when EF Core commands run at design time.
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
     public AppDbContext CreateDbContext(string[] args)
     {
+        // Find the solution's src directory from the current EF working directory.
+        var srcPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), ".."));
+
+        // Load configuration from the API project's appsettings.json.
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Directory.GetCurrentDirectory())
-            .AddJsonFile("appsettings.json", optional: true)
-            .AddUserSecrets<AppDbContextFactory>(optional: true)
+            .SetBasePath(Path.Combine(srcPath, "TechNotes.API"))
+            .AddJsonFile("appsettings.json", optional: false)
+            .AddJsonFile("appsettings.Development.json", optional: true).AddUserSecrets("TechNotes.API")
             .Build();
 
-        var connectionString = configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("Connection string 'DefaultConnection' is not configured.");
+        // Read the PostgreSQL connection string.
+        var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(connectionString)
-            .Options;
+        // Stop with a clear error if the connection string is missing.
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "Connection string 'DefaultConnection' is not configured.");
+        }
 
-        return new AppDbContext(options);
+        // Configure EF Core to use PostgreSQL.
+        var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
+        optionsBuilder.UseNpgsql(connectionString);
+
+        return new AppDbContext(optionsBuilder.Options);
     }
 }
