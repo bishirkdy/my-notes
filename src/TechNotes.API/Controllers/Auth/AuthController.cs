@@ -30,7 +30,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
@@ -47,7 +46,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [AllowAnonymous]
     [HttpPost("refresh")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Refresh(CancellationToken cancellationToken)
     {
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var refreshToken))

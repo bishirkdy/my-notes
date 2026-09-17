@@ -1,0 +1,852 @@
+# TechNotes — Full-Stack Integration Plan
+
+You are working with TWO completely separate projects.
+
+FRONTEND:
+C:\Angular\Technotes-client
+
+BACKEND:
+D:\DotNet\TechNotes
+
+Do not assume they are in the same directory.
+
+The goal is to connect the existing Angular frontend to the existing ASP.NET Core backend while preserving the existing frontend UI and architecture.
+
+IMPORTANT:
+This is a PLANNING task first.
+
+Do not modify source code until the complete plan has been created and reviewed.
+
+==================================================
+1. INSPECT BOTH PROJECTS
+==================================================
+
+Inspect both projects independently.
+
+Frontend:
+C:\Angular\Technotes-client
+
+Backend:
+D:\DotNet\TechNotes
+
+Understand:
+
+- folder structure
+- architecture
+- existing services
+- models
+- components
+- pages
+- routing
+- authentication
+- HTTP configuration
+- API controllers
+- DTOs
+- enums
+- handlers
+- repositories
+- existing functionality
+
+Treat the backend API contract as the source of truth for API requests and responses.
+
+Treat the existing frontend as the source of truth for UI and UX.
+
+Do not redesign the frontend unnecessarily.
+
+Do not modify the backend unless the plan identifies a genuine API/integration problem.
+
+==================================================
+2. CURRENT FRONTEND
+==================================================
+
+The frontend is Angular 21 with:
+
+- Standalone Components
+- Angular Router
+- HttpClient
+- Tailwind CSS 4
+- Existing page/component structure
+- Existing dummy data
+
+Important existing areas include:
+
+features/notes/
+features/auth/
+features/dashboard/
+features/favorites/
+features/categories/
+features/tags/
+features/sharing/
+features/profile/
+features/search/
+features/activity/
+features/learn/
+
+Inspect all existing note-related components before proposing changes.
+
+==================================================
+3. CURRENT BACKEND
+==================================================
+
+The backend is ASP.NET Core and uses:
+
+- CQRS
+- MediatR
+- Clean Architecture
+- PostgreSQL
+- JWT authentication
+- HTTP-only refresh-token cookie
+
+Existing Notes API:
+
+Base route:
+
+/api/v1/notes
+
+Endpoints:
+
+GET    /api/v1/notes
+GET    /api/v1/notes/{id}
+GET    /api/v1/notes/my
+POST   /api/v1/notes
+PUT    /api/v1/notes/{id}
+DELETE /api/v1/notes/{id}
+GET    /api/v1/notes/search?searchTerm=value
+
+Authentication API:
+
+/api/v1/auth
+
+POST /api/v1/auth/register
+POST /api/v1/auth/login
+POST /api/v1/auth/refresh
+POST /api/v1/auth/logout
+GET  /api/v1/auth/me
+
+==================================================
+4. NOTES BACKEND CONTRACT
+==================================================
+
+CreateNoteRequest:
+
+- Title
+- Visibility
+- FolderId
+- CategoryId
+- Sections
+
+NoteSectionRequest:
+
+- Title
+- SortOrder
+- Children
+- Contents
+
+NoteContentRequest:
+
+- Type
+- SortOrder
+- Content
+- Data
+- Metadata
+
+NoteResponse:
+
+- Id
+- Title
+- Status
+- Visibility
+- UserId
+- FolderId
+- CategoryId
+- Sections
+
+Inspect the actual backend implementation of:
+
+- NoteSectionResponse
+- NoteContentResponse
+- NoteContentType
+- NoteVisibility
+- NoteStatus
+
+Do NOT guess these structures.
+
+==================================================
+5. DUMMY DATA AUDIT
+==================================================
+
+Find every usage of:
+
+DummyDataService
+
+Create an inventory showing:
+
+File path
+Component
+Dummy data used
+Required API endpoint
+Replacement required
+
+Do not delete DummyDataService during planning.
+
+Determine which parts can remain frontend-only.
+
+==================================================
+6. FRONTEND API ARCHITECTURE
+==================================================
+
+Plan a dedicated service:
+
+C:\Angular\Technotes-client\src\app\features\notes\services\note-api.service.ts
+
+It should eventually support:
+
+getPublicNotes()
+getById(id)
+getMyNotes()
+create(request)
+update(id, request)
+delete(id)
+search(searchTerm)
+
+Use Angular HttpClient.
+
+Do not hardcode API URLs inside components.
+
+Use environment configuration.
+
+==================================================
+7. FRONTEND MODELS
+==================================================
+
+Create/update strongly typed Angular models matching the actual backend DTOs.
+
+Expected files:
+
+C:\Angular\Technotes-client\src\app\features\notes\models\content-block.model.ts
+
+C:\Angular\Technotes-client\src\app\features\notes\models\content-block-type.model.ts
+
+C:\Angular\Technotes-client\src\app\features\notes\models\note-create.model.ts
+
+C:\Angular\Technotes-client\src\app\features\notes\models\note-response.model.ts
+
+Do not create duplicate models if equivalent models already exist.
+
+Reuse existing models where appropriate.
+
+==================================================
+8. CONTENT BLOCK MAPPING
+==================================================
+
+The existing frontend has content blocks such as:
+
+- text
+- definition
+- points
+- example
+- code
+- table
+- graph
+- quote
+
+The backend uses:
+
+NoteContentRequest
+
+with:
+
+Type
+SortOrder
+Content
+Data
+Metadata
+
+Inspect every existing content-block component.
+
+Determine how each existing frontend block should map to the backend.
+
+Create a mapping table:
+
+Frontend block
+Backend NoteContentType
+Content
+Data
+Metadata
+Serialization required
+
+Pay special attention to Data because the backend stores it as string.
+
+Determine whether JSON.stringify() and JSON.parse() are required.
+
+Do not guess enum values.
+
+==================================================
+9. SECTION HIERARCHY
+==================================================
+
+The note system supports recursive sections.
+
+Example:
+
+1. C# Basics
+   1.1 Variables
+   1.2 Data Types
+
+2. OOP
+   2.1 Classes
+   2.2 Inheritance
+      2.2.1 Single Inheritance
+      2.2.2 Multilevel Inheritance
+
+The frontend must preserve:
+
+- parent/child relationship
+- SortOrder
+- recursive nesting
+
+Inspect:
+
+section-tree
+section-item
+section-actions
+note-create
+note-view
+
+Determine which existing components can be reused.
+
+Do not replace working components unnecessarily.
+
+==================================================
+10. SORT ORDER
+==================================================
+
+Backend already supports:
+
+Section.SortOrder
+
+Content.SortOrder
+
+Plan how the frontend maintains these values.
+
+Before submitting CreateNoteRequest or UpdateNoteRequest:
+
+Root sections should have sequential SortOrder.
+
+Children should have sequential SortOrder among siblings.
+
+Content blocks should have sequential SortOrder within their section.
+
+Determine whether the existing UI array ordering can be converted into SortOrder automatically.
+
+==================================================
+11. NOTE VIEW
+==================================================
+
+Existing route:
+
+/notes/:id
+
+Connect it to:
+
+GET /api/v1/notes/{id}
+
+The page should eventually:
+
+- read ID from ActivatedRoute
+- call NoteApiService
+- show loading state
+- show error state
+- show note
+- render sections
+- render nested sections
+- render content blocks
+- respect SortOrder
+
+Preserve the existing NoteView UI.
+
+==================================================
+12. PUBLIC NOTES
+==================================================
+
+Existing public notes page should use:
+
+GET /api/v1/notes
+
+Determine the exact frontend page/component responsible.
+
+Replace dummy notes with API data.
+
+Add:
+
+- loading state
+- error state
+- empty state
+
+==================================================
+13. MY NOTES
+==================================================
+
+Existing My Notes page should use:
+
+GET /api/v1/notes/my
+
+It requires authentication.
+
+Determine:
+
+- current component
+- current dummy data
+- existing route
+- existing UI actions
+
+Preserve the existing UI.
+
+==================================================
+14. CREATE NOTE
+==================================================
+
+Existing Create Note page should use:
+
+POST /api/v1/notes
+
+Determine how the existing editor state is structured.
+
+Plan the transformation:
+
+Frontend editor state
+        ↓
+NoteCreateModel
+        ↓
+CreateNoteRequest
+        ↓
+POST /api/v1/notes
+
+The request must contain:
+
+title
+visibility
+folderId
+categoryId
+sections
+    ↓
+children
+    ↓
+contents
+    ↓
+type
+sortOrder
+content
+data
+metadata
+
+Do not lose nested sections or content block ordering.
+
+==================================================
+15. UPDATE NOTE
+==================================================
+
+Use:
+
+PUT /api/v1/notes/{id}
+
+Inspect whether an existing edit page/component exists.
+
+If it exists, reuse it.
+
+If it does not exist, propose the minimum required implementation.
+
+Do not build a completely new editor if the existing Create Note editor can be reused.
+
+==================================================
+16. DELETE NOTE
+==================================================
+
+Use:
+
+DELETE /api/v1/notes/{id}
+
+Inspect existing delete controls.
+
+Plan:
+
+confirmation
+API call
+success handling
+error handling
+refresh/navigation
+
+Do not add unnecessary libraries.
+
+==================================================
+17. SEARCH
+==================================================
+
+Use:
+
+GET /api/v1/notes/search?searchTerm=value
+
+This endpoint is authenticated.
+
+Inspect:
+
+C:\Angular\Technotes-client\src\app\features\search\
+
+Determine how the current search UI works.
+
+Connect it to the Notes API without changing the existing design unnecessarily.
+
+==================================================
+18. AUTHENTICATION
+==================================================
+
+Inspect the existing frontend authentication implementation before proposing changes.
+
+Determine whether the frontend already has:
+
+- AuthService
+- token storage
+- HTTP interceptor
+- route guards
+- current-user state
+- login handling
+- logout handling
+- refresh handling
+
+Backend authentication:
+
+Access token:
+JWT
+
+Refresh token:
+HTTP-only cookie
+
+The frontend must NOT attempt to read the HTTP-only refresh token using JavaScript.
+
+Determine whether Angular requests need:
+
+withCredentials: true
+
+especially for:
+
+/api/v1/auth/refresh
+/api/v1/auth/logout
+
+Determine the correct access-token flow.
+
+==================================================
+19. HTTP INTERCEPTOR
+==================================================
+
+If an interceptor already exists, inspect and reuse it.
+
+If missing, plan one for:
+
+Authorization: Bearer <access-token>
+
+Protected requests should automatically receive the access token.
+
+Determine how 401 responses should trigger token refresh.
+
+Do not implement multiple competing authentication mechanisms.
+
+==================================================
+20. BACKEND CORS
+==================================================
+
+Inspect:
+
+D:\DotNet\TechNotes
+
+especially:
+
+Program.cs
+
+and CORS configuration.
+
+Verify:
+
+- frontend origin
+- API origin
+- credentials
+- cookie policy
+- HTTPS
+
+Do not change CORS unless required.
+
+If backend changes are required, clearly list them separately.
+
+==================================================
+21. FAVORITES
+==================================================
+
+The current frontend contains favorite functionality.
+
+However, the provided Notes API does not contain a favorites endpoint.
+
+Do NOT invent an endpoint.
+
+Mark Favorites as:
+
+FRONTEND ONLY / NOT PERSISTED
+
+unless another backend project endpoint exists after inspection.
+
+==================================================
+22. OTHER FEATURES
+==================================================
+
+Inspect:
+
+- Categories
+- Tags
+- Sharing
+- Activity
+- Dashboard
+- Learning
+
+Determine whether matching backend APIs actually exist.
+
+Do not invent endpoints.
+
+For every feature classify it as:
+
+CONNECTED
+BACKEND API EXISTS
+BACKEND API MISSING
+FRONTEND ONLY
+FUTURE WORK
+
+==================================================
+23. ERROR HANDLING
+==================================================
+
+Plan handling for:
+
+400 Bad Request
+401 Unauthorized
+403 Forbidden
+404 Not Found
+500 Internal Server Error
+Network failure
+
+Avoid duplicating the same error handling logic across every component.
+
+Inspect existing error handling before proposing a centralized solution.
+
+==================================================
+24. LOADING / EMPTY STATES
+==================================================
+
+API-driven pages should support:
+
+Loading
+Error
+Empty
+Success
+
+Reuse existing UI patterns if available.
+
+==================================================
+25. FILES TO CREATE
+==================================================
+
+List every new file using its COMPLETE Windows path.
+
+Example:
+
+C:\Angular\Technotes-client\src\app\features\notes\services\note-api.service.ts
+
+Do not use relative paths in the final plan.
+
+==================================================
+26. FILES TO MODIFY
+==================================================
+
+List every existing file that must be modified.
+
+Use COMPLETE Windows paths.
+
+For each file explain:
+
+- why it needs modification
+- what changes are required
+- whether UI changes are required
+
+==================================================
+27. FILES TO REMOVE
+==================================================
+
+Only list files that can safely be removed.
+
+Do not recommend deleting DummyDataService until all usages are migrated.
+
+==================================================
+28. IMPLEMENTATION PHASES
+==================================================
+
+Organize the implementation in this order:
+
+PHASE 1
+Inspect backend contract
+
+PHASE 2
+Frontend environment/API configuration
+
+PHASE 3
+Frontend TypeScript models
+
+PHASE 4
+Note API service
+
+PHASE 5
+Authentication and HTTP interceptor
+
+PHASE 6
+Content block mapping
+
+PHASE 7
+Recursive section structure
+
+PHASE 8
+Public Notes
+
+PHASE 9
+Note View
+
+PHASE 10
+My Notes
+
+PHASE 11
+Create Note
+
+PHASE 12
+Update Note
+
+PHASE 13
+Delete Note
+
+PHASE 14
+Search
+
+PHASE 15
+Remove migrated dummy-data dependencies
+
+PHASE 16
+Testing and verification
+
+==================================================
+29. TESTING PLAN
+==================================================
+
+Create a verification checklist.
+
+Include:
+
+Frontend compilation
+
+Backend running
+
+API connection
+
+Login
+
+Access token
+
+Protected API request
+
+Public notes
+
+Single note
+
+My notes
+
+Create note
+
+Nested sections
+
+Section SortOrder
+
+Content SortOrder
+
+All content block types
+
+Update note
+
+Delete note
+
+Search
+
+401 handling
+
+404 handling
+
+Loading state
+
+Empty state
+
+Error state
+
+Logout
+
+Refresh token
+
+==================================================
+30. IMPORTANT RULES
+==================================================
+
+DO NOT GUESS.
+
+If something cannot be verified:
+
+write:
+
+UNKNOWN — NEEDS INSPECTION
+
+Do not invent:
+
+- endpoints
+- DTO fields
+- enum values
+- response properties
+- authentication behavior
+
+Do not redesign the existing frontend.
+
+Do not rewrite working components unnecessarily.
+
+Do not modify backend code during the planning stage.
+
+Do not modify frontend code during the planning stage.
+
+Do not install packages during the planning stage.
+
+First produce the complete implementation plan.
+
+==================================================
+FINAL OUTPUT
+==================================================
+
+Create:
+
+OPENCODE-IMPLEMENTATION-PLAN.md
+
+The final plan must clearly show:
+
+1. Current architecture
+2. Frontend/backend relationship
+3. API mapping
+4. Model mapping
+5. Content-block mapping
+6. Recursive section strategy
+7. SortOrder strategy
+8. Authentication strategy
+9. Dummy-data migration
+10. Files to create
+11. Files to modify
+12. Files to remove
+13. Implementation phases
+14. Risks
+15. Testing checklist
+
+Every file path must be shown as a full Windows path.
