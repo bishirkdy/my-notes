@@ -7,17 +7,17 @@ using TechNotes.Application.Results.Auth;
 
 namespace TechNotes.API.Controllers.Auth;
 
-// Provides registration, login, refresh, logout, and current-user endpoints for normal and admin users.
 [ApiController]
 [Route("api/v1/auth")]
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
     private const string RefreshCookieName = "technotes_refresh_token";
+    private const string RefreshCookiePath = "/api/v1/auth";
 
-    // Creates a normal User account and immediately signs it in.
     [AllowAnonymous]
     [HttpPost("register")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<AuthResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.RegisterAsync(request, cancellationToken);
@@ -26,10 +26,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return StatusCode(StatusCodes.Status201Created, ToResponse(result.Auth));
     }
 
-    // Checks credentials and returns a short-lived access token. The refresh token is written only to a secure cookie.
     [AllowAnonymous]
     [HttpPost("login")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Login(LoginRequest request, CancellationToken cancellationToken)
     {
         var result = await authService.LoginAsync(request, cancellationToken);
@@ -42,10 +42,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Ok(ToResponse(result.Auth));
     }
 
-    // Replaces an expired access token and rotates the one-time refresh token stored in the cookie.
     [AllowAnonymous]
     [HttpPost("refresh")]
     [ProducesResponseType<AuthResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<ActionResult<AuthResponse>> Refresh(CancellationToken cancellationToken)
     {
         if (!Request.Cookies.TryGetValue(RefreshCookieName, out var refreshToken))
@@ -64,7 +64,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return Ok(ToResponse(result.Auth));
     }
 
-    // Revokes the database token and removes the browser cookie.
     [AllowAnonymous]
     [HttpPost("logout")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -79,9 +78,10 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return NoContent();
     }
 
-    // Lets an authenticated frontend retrieve the identity encoded in its access token.
     [Authorize]
     [HttpGet("me")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public IActionResult Me()
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
@@ -89,25 +89,34 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         {
             userId,
             userName = User.Identity?.Name,
-            email = User.FindFirstValue(ClaimTypes.Email),
+            email = User.FindFirstValue(ClaimTypes.Email) ?? User.FindFirstValue("email"),
             roles = User.FindAll(ClaimTypes.Role).Select(role => role.Value)
         });
     }
 
-    // HTTP-only prevents JavaScript access; SameSite=Strict helps protect the refresh endpoint from CSRF.
+    // The refresh token must stay out of JavaScript, and the path must match the auth routes.
     private void SetRefreshCookie(string refreshToken, DateTime expiresAtUtc) =>
-        Response.Cookies.Append(RefreshCookieName, refreshToken, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = Request.IsHttps,
-            SameSite = SameSiteMode.Strict,
-            Expires = new DateTimeOffset(expiresAtUtc),
-            Path = "/api/user/auth"
-        });
+        Response.Cookies.Append(RefreshCookieName, refreshToken, CreateRefreshCookieOptions(
+            expires: new DateTimeOffset(expiresAtUtc)));
 
     private void DeleteRefreshCookie() =>
-        Response.Cookies.Delete(RefreshCookieName, new CookieOptions { Path = "/api/user/auth" });
+        Response.Cookies.Delete(RefreshCookieName, CreateRefreshCookieOptions());
+
+    private CookieOptions CreateRefreshCookieOptions(DateTimeOffset? expires = null) => new()
+    {
+        HttpOnly = true,
+        Secure = Request.IsHttps,
+        SameSite = SameSiteMode.Strict,
+        Path = RefreshCookiePath,
+        Expires = expires
+    };
 
     private static AuthResponse ToResponse(AuthResult result) =>
-        new(result.AccessToken, result.AccessTokenExpiresAtUtc, result.UserId, result.UserName, result.Email, result.Roles);
+        new(
+            result.AccessToken,
+            result.AccessTokenExpiresAtUtc,
+            result.UserId,
+            result.UserName,
+            result.Email,
+            result.Roles);
 }

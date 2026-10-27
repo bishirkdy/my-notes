@@ -1,29 +1,42 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace TechNotes.API.Common.Exceptions;
 
-// Converts unhandled exceptions into consistent, safe API error responses.
 public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logger) : IExceptionHandler
 {
-    //This is the method ASP.NET Core calls when an unhandled exception occurs. ValueTask<bool> - The method eventually returns a boolean.
-    //true  → Exception was handled and false → Exception was not handled
-    //.NET Core internally calls TryHandleAsync() when an unhandled exception occurs.
-    public async ValueTask<bool> TryHandleAsync(HttpContext httpContext,Exception exception,CancellationToken cancellationToken)
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
     {
-        // Keeps full technical details in the server log, not in the response sent to users.
-        logger.LogError(exception, "An unhandled exception occurred while processing {Path}.", httpContext.Request.Path);
+        logger.LogError(exception, "Unhandled exception for {Path}.", httpContext.Request.Path);
 
-        // Maps expected application errors to useful HTTP status codes.
         var (status, title, detail) = exception switch
         {
-            ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request.", exception.Message),
-            KeyNotFoundException => (StatusCodes.Status404NotFound, "Resource not found.", exception.Message),
-            _ => (StatusCodes.Status500InternalServerError, "An unexpected error occurred.", "Please try again later.")
+            ArgumentException or ValidationException =>
+                (StatusCodes.Status400BadRequest, "Invalid request.", exception.Message),
+            UnauthorizedAccessException =>
+                (StatusCodes.Status401Unauthorized, "Unauthorized.", "You are not allowed to perform this action."),
+            KeyNotFoundException =>
+                (StatusCodes.Status404NotFound, "Resource not found.", exception.Message),
+            DbUpdateException =>
+                (StatusCodes.Status409Conflict, "Database conflict.", "The operation could not be completed."),
+            OperationCanceledException =>
+                (StatusCodes.Status499ClientClosedRequest, "Request cancelled.", "The request was cancelled."),
+            _ => (StatusCodes.Status500InternalServerError, "Unexpected error.", "Please try again later.")
         };
 
-        // ProblemDetails is the standard JSON format used for API errors.
+        if (httpContext.Response.HasStarted)
+        {
+            return false;
+        }
+
+        httpContext.Response.StatusCode = status;
+        httpContext.Response.ContentType = "application/problem+json";
+
         var problemDetails = new ProblemDetails
         {
             Status = status,
@@ -32,10 +45,7 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
             Instance = httpContext.Request.Path
         };
 
-        httpContext.Response.StatusCode = status;
-        httpContext.Response.ContentType = "application/problem+json";
         await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
-
         return true;
     }
 }

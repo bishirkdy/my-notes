@@ -12,7 +12,9 @@ public static class JwtExtensions
         var jwtOptions = configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>()
             ?? throw new InvalidOperationException("JWT settings are not configured.");
 
-        if (jwtOptions.Key.Length < 32 || jwtOptions.Key.StartsWith("CHANGE_ME", StringComparison.Ordinal))
+        if (string.IsNullOrWhiteSpace(jwtOptions.Key) ||
+            jwtOptions.Key.Length < 32 ||
+            jwtOptions.Key.StartsWith("CHANGE_ME", StringComparison.Ordinal))
         {
             throw new InvalidOperationException("Configure a secure JWT key with at least 32 characters.");
         }

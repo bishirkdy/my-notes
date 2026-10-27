@@ -6,12 +6,12 @@ public static class ApplicationExtensions
     {
         app.UseSwaggerDocumentation();
         app.UseExceptionHandling();
-
         app.UseHttpsRedirection();
 
+        // CORS must run before authentication so preflight requests are handled.
+        app.UseCors("AngularClient");
         app.UseAuthentication();
         app.UseAuthorization();
-
         app.MapControllers();
 
         return app;

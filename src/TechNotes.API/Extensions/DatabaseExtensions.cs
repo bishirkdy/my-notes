@@ -1,4 +1,6 @@
+using Microsoft.EntityFrameworkCore;
 using TechNotes.Application.Settings.Auth;
+using TechNotes.Persistence.Data;
 using TechNotes.Persistence.Seeder;
 
 namespace TechNotes.API.Extensions;
@@ -13,10 +15,19 @@ public static class DatabaseExtensions
 
     public static async Task SeedDatabaseAsync(this WebApplication app)
     {
-        if (!app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
-            return;
-
         using var scope = app.Services.CreateScope();
+
+        if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            await dbContext.Database.MigrateAsync();
+        }
+
+        if (!app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
+        {
+            return;
+        }
+
         await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
     }
 }

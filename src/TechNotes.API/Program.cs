@@ -11,12 +11,16 @@ builder.Services
     .AddInfrastructure(builder.Configuration)
     .AddApiServices(builder.Configuration);
 
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? ["http://localhost:4200"];
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AngularClient", policy =>
     {
         policy
-            .WithOrigins("http://localhost:4200")
+            .WithOrigins(allowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -26,7 +30,6 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseApiPipeline();
-app.UseCors("AngularClient");
 await app.SeedDatabaseAsync();
 
 app.Run();
