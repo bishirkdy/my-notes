@@ -9,4 +9,7 @@
     <Project Path="src/TechNotes.Infrastructure/TechNotes.Infrastructure.csproj" />
     <Project Path="src/TechNotes.Persistence/TechNotes.Persistence.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/TechNotes.Application.Tests/TechNotes.Application.Tests.csproj" />
+  </Folder>
 </Solution>
