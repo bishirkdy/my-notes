@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using TechNotes.Domain.Common;
 using TechNotes.Domain.Entities.Identity;
 using TechNotes.Domain.Entities.Notes;
 using TechNotes.Domain.Entities.Notifications;
@@ -29,6 +30,31 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<NoteVersion> NoteVersions => Set<NoteVersion>();       // Stores historical versions of notes.
     public DbSet<Notification> Notifications => Set<Notification>();    // User notification table.
 
+
+    public override int SaveChanges()
+    {
+        ApplyAuditTimestamps();
+        return base.SaveChanges();
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyAuditTimestamps();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    private void ApplyAuditTimestamps()
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var entry in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (entry.State == EntityState.Modified)
+            {
+                entry.Entity.UpdatedAtUtc = now;
+            }
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

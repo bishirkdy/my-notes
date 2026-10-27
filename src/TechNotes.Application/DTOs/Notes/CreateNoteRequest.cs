@@ -1,25 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 using TechNotes.Domain.Enums;
 
-namespace TechNotes.Application.DTOs.Notes
+namespace TechNotes.Application.DTOs.Notes;
+
+public sealed class CreateNoteRequest
 {
-    // Defines the data required to create a new note.
-    public sealed class CreateNoteRequest
-    {
-        [Required]
-        [StringLength(200, MinimumLength = 1)]
-        public string Title { get; set; } = string.Empty;
+    [Required]
+    [StringLength(200, MinimumLength = 1)]
+    public string Title { get; set; } = string.Empty;
 
-        // Public allows everyone to read the note by default.
-        public NoteVisibility Visibility { get; set; } = NoteVisibility.Public;
+    [EnumDataType(typeof(NoteVisibility))]
+    public NoteVisibility Visibility { get; set; } = NoteVisibility.Public;
 
-        // Allows the note to be organized into an optional folder.
-        public Guid? FolderId { get; set; }
+    [EnumDataType(typeof(NoteStatus))]
+    public NoteStatus Status { get; set; } = NoteStatus.Draft;
 
-        // Allows the note to be classified under an optional category.
-        public Guid? CategoryId { get; set; }
+    public Guid? FolderId { get; set; }
 
-        // Contains the complete heading and content structure of the note.
-        public List<NoteSectionRequest> Sections { get; set; } = [];
-    }
+    public Guid? CategoryId { get; set; }
+
+    public List<NoteSectionRequest> Sections { get; set; } = [];
 }

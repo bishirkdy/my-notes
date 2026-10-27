@@ -1,82 +1,84 @@
 using MediatR;
 using TechNotes.Application.DTOs.Notes;
+using TechNotes.Application.Features.Notes.Common;
 using TechNotes.Application.Interfaces.Repositories;
+using TechNotes.Domain.Entities.Notes;
 
 namespace TechNotes.Application.Features.Notes.Commands.UpdateNote
 {
-    // Handles updating a note owned by the authenticated user.
-    public sealed class UpdateNoteCommandHandler(INoteRepository noteRepository) : IRequestHandler<UpdateNoteCommand, NoteResponse?>
+    public sealed class UpdateNoteCommandHandler(INoteRepository noteRepository)
+        : IRequestHandler<UpdateNoteCommand, NoteResponse?>
     {
-        // Updates the note after verifying ownership.
         public async Task<NoteResponse?> Handle(UpdateNoteCommand command, CancellationToken cancellationToken)
         {
-            var note = await noteRepository.GetWithContentAsync(command.NoteId, cancellationToken);
-
+            var note = await noteRepository.GetByIdAsync(command.NoteId, cancellationToken);
             if (note is null || note.UserId != command.UserId)
             {
                 return null;
             }
 
-            note.Title = command.Request.Title;
-            note.Visibility = command.Request.Visibility;
-            note.FolderId = command.Request.FolderId;
-            note.CategoryId = command.Request.CategoryId;
+            var request = command.Request;
+            NoteContentValidator.Validate(request.Sections);
 
-            noteRepository.Update(note);
+            note.Title = request.Title.Trim();
+            note.Visibility = request.Visibility ?? note.Visibility;
+            note.Status = request.Status ?? note.Status;
+            note.FolderId = request.FolderId;
+            note.CategoryId = request.CategoryId;
+
+            // Remove the old hierarchy before adding the new one. Saving both in a
+            // single graph causes EF Core to update rows that it is also deleting.
+            await noteRepository.RemoveSectionsAsync(note, cancellationToken);
             await noteRepository.SaveChangesAsync(cancellationToken);
-            return MapToResponse(note);
+
+            AddSections(note, request.Sections);
+            await noteRepository.SaveChangesAsync(cancellationToken);
+
+            var savedNote = await noteRepository.GetWithContentAsync(note.Id, cancellationToken);
+            return savedNote is null ? null : NoteResponseMapper.Map(savedNote);
         }
 
-        // Maps the updated note to the response DTO.
-        private static NoteResponse MapToResponse(
-            Domain.Entities.Notes.Note note)
+        private static void AddSections(
+            Note note,
+            IEnumerable<NoteSectionRequest> requests,
+            NoteSection? parent = null)
         {
-            return new NoteResponse
+            foreach (var request in requests)
             {
-                Id = note.Id,
-                UserId = note.UserId,
-                Title = note.Title,
-                Status = note.Status,
-                Visibility = note.Visibility,
-                FolderId = note.FolderId,
-                CategoryId = note.CategoryId,
+                var section = new NoteSection
+                {
+                    Id = Guid.Empty,
+                    Note = note,
+                    ParentSection = parent,
+                    Title = request.Title.Trim(),
+                    SortOrder = request.SortOrder
+                };
 
-                Sections = note.Sections
-                    .Where(x => x.ParentSectionId == null)
-                    .OrderBy(x => x.SortOrder)
-                    .Select(MapSection)
-                    .ToList()
-            };
-        }
-
-        // Recursively maps sections and their content.
-        private static NoteSectionResponse MapSection(
-            Domain.Entities.Notes.NoteSection section)
-        {
-            return new NoteSectionResponse
-            {
-                Id = section.Id,
-                Title = section.Title,
-                SortOrder = section.SortOrder,
-
-                Contents = section.Contents
-                    .OrderBy(x => x.SortOrder)
-                    .Select(x => new NoteContentResponse
+                foreach (var content in request.Contents)
+                {
+                    section.Contents.Add(new NoteContent
                     {
-                        Id = x.Id,
-                        Type = x.Type,
-                        SortOrder = x.SortOrder,
-                        Content = x.Content,
-                        Data = x.Data,
-                        Metadata = x.Metadata
-                    })
-                    .ToList(),
+                        Id = Guid.Empty,
+                        Section = section,
+                        Type = content.Type,
+                        SortOrder = content.SortOrder,
+                        Content = content.Content,
+                        Data = string.IsNullOrWhiteSpace(content.Data) ? null : content.Data,
+                        Metadata = string.IsNullOrWhiteSpace(content.Metadata) ? null : content.Metadata
+                    });
+                }
 
-                Children = section.Children
-                    .OrderBy(x => x.SortOrder)
-                    .Select(MapSection)
-                    .ToList()
-            };
+                AddSections(note, request.Children, parent: section);
+
+                if (parent is null)
+                {
+                    note.Sections.Add(section);
+                }
+                else
+                {
+                    parent.Children.Add(section);
+                }
+            }
         }
     }
 }

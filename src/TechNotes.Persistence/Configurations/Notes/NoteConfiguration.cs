@@ -11,7 +11,7 @@ namespace TechNotes.Persistence.Configurations.Notes
         {
             builder.HasKey(x => x.Id);
             builder.Property(x => x.Title)
-    .           IsRequired()
+                .IsRequired()
                 .HasMaxLength(200);
 
             // A user can own many notes.

@@ -5,62 +5,83 @@ using TechNotes.Persistence.Data;
 
 namespace TechNotes.Persistence.Repositories
 {
-    public sealed class NoteRepository(AppDbContext context): GenericRepository<Note>(context), INoteRepository
+    public sealed class NoteRepository : GenericRepository<Note>, INoteRepository
     {
-        // Retrieves a note together with its complete section hierarchy and content.
-        public async Task<Note?> GetWithContentAsync(Guid noteId, CancellationToken cancellationToken = default)
+        private readonly AppDbContext _context;
+
+        public NoteRepository(AppDbContext context) : base(context)
         {
-            // Loads the note and all of its related data needed by the application layer.
-            return await context.Notes
-                //.Include(x => x.Sections)
-                //    .ThenInclude(x => x.Contents)
-                //.Include(x => x.NoteTags)
-                //    .ThenInclude(x => x.Tag)
-                //.Include(x => x.Shares)
-                .AsNoTracking()
-                .FirstOrDefaultAsync(
-                    x => x.Id == noteId,
-                    cancellationToken);
+            _context = context;
         }
 
-        // Retrieves all notes owned by a specific user.
-        public async Task<IEnumerable<Note>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
-        {
-            return await context.Notes
+        public Task<Note?> GetWithContentAsync(Guid noteId, CancellationToken cancellationToken = default) =>
+            BuildContentQuery()
                 .AsNoTracking()
-                .Where(x => x.UserId == userId)
-                .OrderByDescending(x => x.CreatedAtUtc)
+                .FirstOrDefaultAsync(note => note.Id == noteId, cancellationToken);
+
+        public Task<Note?> GetTrackedWithContentAsync(Guid noteId, CancellationToken cancellationToken = default) =>
+            BuildContentQuery()
+                .FirstOrDefaultAsync(note => note.Id == noteId, cancellationToken);
+
+        public async Task<IEnumerable<Note>> GetByUserIdAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await BuildContentQuery()
+                .AsNoTracking()
+                .Where(note => note.UserId == userId)
+                .OrderByDescending(note => note.CreatedAtUtc)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IEnumerable<Note>> GetAccessibleNotesAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await BuildContentQuery()
+                .AsNoTracking()
+                .Where(note =>
+                    note.UserId == userId ||
+                    (note.Visibility == Domain.Enums.NoteVisibility.Public &&
+                     note.Status == Domain.Enums.NoteStatus.Published) ||
+                    note.Shares.Any(share => share.UserId == userId))
+                .OrderByDescending(note => note.CreatedAtUtc)
+                .ToListAsync(cancellationToken);
+
+        public async Task<IEnumerable<Note>> SearchAsync(
+            Guid userId,
+            string searchTerm,
+            CancellationToken cancellationToken = default)
+        {
+            var term = searchTerm.Trim();
+            if (term.Length == 0)
+            {
+                return [];
+            }
+
+            return await BuildContentQuery()
+                .AsNoTracking()
+                .Where(note => note.UserId == userId && EF.Functions.ILike(note.Title, $"%{term}%"))
+                .OrderByDescending(note => note.CreatedAtUtc)
                 .ToListAsync(cancellationToken);
         }
 
-        // Retrieves notes the user owns or has permission to access.
-        public async Task<IEnumerable<Note>> GetAccessibleNotesAsync(Guid userId, CancellationToken cancellationToken = default)
-        {
-            return await context.Notes
+        public async Task<IEnumerable<Note>> GetPublicNotesAsync(CancellationToken cancellationToken = default) =>
+            await BuildContentQuery()
                 .AsNoTracking()
-                .Where(note => note.UserId == userId || note.Visibility == Domain.Enums.NoteVisibility.Public || note.Shares.Any(share => share.UserId == userId))
-                .OrderByDescending(x => x.CreatedAtUtc)
+                .Where(note =>
+                    note.Visibility == Domain.Enums.NoteVisibility.Public &&
+                    note.Status == Domain.Enums.NoteStatus.Published)
+                .OrderByDescending(note => note.CreatedAtUtc)
                 .ToListAsync(cancellationToken);
+
+        public async Task RemoveSectionsAsync(Note note, CancellationToken cancellationToken = default)
+        {
+            var sections = await _context.NoteSections
+                .Where(section => section.NoteId == note.Id)
+                .ToListAsync(cancellationToken);
+
+            _context.NoteSections.RemoveRange(sections);
         }
 
-        // Searches the user's notes by title.
-        public async Task<IEnumerable<Note>> SearchAsync(Guid userId, string searchTerm, CancellationToken cancellationToken = default)
-        {
-            return await context.Notes
-                .AsNoTracking()
-                .Where(x => x.UserId == userId && x.Title.Contains(searchTerm))
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .ToListAsync(cancellationToken);
-        }
-
-        // Retrieves notes that are explicitly marked as public.
-        public async Task<IEnumerable<Note>> GetPublicNotesAsync(CancellationToken cancellationToken = default)
-        {
-            return await context.Notes
-                .AsNoTracking()
-                .Where(x => x.Visibility == Domain.Enums.NoteVisibility.Public)
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .ToListAsync(cancellationToken);
-        }
+        private IQueryable<Note> BuildContentQuery() =>
+            _context.Notes
+                .Include(note => note.Sections)
+                    .ThenInclude(section => section.Contents)
+                .Include(note => note.Shares)
+                .AsSplitQuery();
     }
 }

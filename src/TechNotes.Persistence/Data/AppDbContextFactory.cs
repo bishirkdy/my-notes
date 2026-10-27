@@ -4,35 +4,54 @@ using Microsoft.Extensions.Configuration;
 
 namespace TechNotes.Persistence.Data;
 
-// Creates AppDbContext when EF Core commands run at design time.
 public sealed class AppDbContextFactory : IDesignTimeDbContextFactory<AppDbContext>
 {
+    private const string UserSecretsId = "technotes-api-9dba6e6c-03b6-48ab-a5f7-3de75d8273e7";
+
     public AppDbContext CreateDbContext(string[] args)
     {
-        // Find the solution's src directory from the current EF working directory.
-        var srcPath = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), ".."));
-
-        // Load configuration from the API project's appsettings.json.
+        var apiPath = ResolveApiProjectPath();
         var configuration = new ConfigurationBuilder()
-            .SetBasePath(Path.Combine(srcPath, "TechNotes.API"))
+            .SetBasePath(apiPath)
             .AddJsonFile("appsettings.json", optional: false)
-            .AddJsonFile("appsettings.Development.json", optional: true).AddUserSecrets("TechNotes.API")
+            .AddJsonFile("appsettings.Development.json", optional: true)
+            .AddUserSecrets(UserSecretsId)
+            .AddEnvironmentVariables()
             .Build();
 
-        // Read the PostgreSQL connection string.
         var connectionString = configuration.GetConnectionString("DefaultConnection");
-
-        // Stop with a clear error if the connection string is missing.
         if (string.IsNullOrWhiteSpace(connectionString))
         {
             throw new InvalidOperationException(
-                "Connection string 'DefaultConnection' is not configured.");
+                "Connection string 'DefaultConnection' is not configured. Set it with dotnet user-secrets.");
         }
 
-        // Configure EF Core to use PostgreSQL.
         var optionsBuilder = new DbContextOptionsBuilder<AppDbContext>();
         optionsBuilder.UseNpgsql(connectionString);
-
         return new AppDbContext(optionsBuilder.Options);
+    }
+
+    private static string ResolveApiProjectPath()
+    {
+        var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
+
+        while (directory is not null)
+        {
+            var nested = Path.Combine(directory.FullName, "src", "TechNotes.API");
+            if (Directory.Exists(nested))
+            {
+                return nested;
+            }
+
+            var sibling = Path.Combine(directory.FullName, "TechNotes.API");
+            if (Directory.Exists(sibling))
+            {
+                return sibling;
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate the TechNotes.API project directory.");
     }
 }
