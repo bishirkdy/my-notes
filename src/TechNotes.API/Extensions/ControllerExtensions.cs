@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http.Features;
+using TechNotes.Application.Common.Images;
 
 namespace TechNotes.API.Extensions;
 
@@ -5,6 +7,10 @@ public static class ControllerExtensions
 {
     public static IServiceCollection AddApiControllers(this IServiceCollection services)
     {
+        services.Configure<FormOptions>(options =>
+        {
+            options.MultipartBodyLengthLimit = ImageFileValidator.MaxFileSizeBytes + (512 * 1024);
+        });
         services.AddControllers();
             //.ConfigureApiBehaviorOptions(options =>
             //{

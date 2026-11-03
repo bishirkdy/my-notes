@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+[ "${PISTON_LANGUAGE}" == "fsi" ] && exit 0
+
+export DOTNET_CLI_HOME=$PWD
+export HOME=$PWD
+export DOTNET_CLI_TELEMETRY_OPTOUT=1
+export DOTNET_NOLOGO=1
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE=1
+export DOTNET_GENERATE_ASPNET_CERTIFICATE=false
+
+case "${PISTON_LANGUAGE}" in
+    basic.net|fsharp.net)
+        echo "Only C# is enabled for this runtime."
+        exit 1
+        ;;
+    csharp.net)
+        ;;
+    *)
+        echo "Unsupported runtime ${PISTON_LANGUAGE}"
+        exit 1
+        ;;
+esac
+
+for file in "$@"; do
+    case "$file" in
+        *.cs) ;;
+        *) mv "$file" "$file.cs" ;;
+    esac
+done
+
+CSC=$(find "$DOTNET_ROOT/sdk" -path '*/Roslyn/bincore/csc.dll' -print -quit)
+REF_DIR=$(find "$DOTNET_ROOT/packs/Microsoft.NETCore.App.Ref" -type d -path '*/ref/net8.0' -print -quit)
+
+if [ ! -d "$REF_DIR" ]; then
+    echo "C# reference assemblies were not found."
+    exit 1
+fi
+
+refs=()
+while IFS= read -r ref; do
+    refs+=("-r:$ref")
+done < <(find "$REF_DIR" -name '*.dll' -print)
+
+compile() {
+    dotnet "$CSC" \
+        -nologo \
+        -langversion:latest \
+        -nullable:enable \
+        -unsafe \
+        -debug- \
+        -target:"$1" \
+        -out:app.dll \
+        "${refs[@]}" \
+        *.cs
+}
+
+if ! compile exe 2>compile.err; then
+    if grep -q 'CS8805' compile.err; then
+        compile library
+        touch .piston_library
+        rm -f compile.err
+        exit 0
+    fi
+    cat compile.err >&2
+    rm -f compile.err
+    exit 1
+fi
+
+rm -f compile.err
+
+RUNTIME_VERSION=$(basename "$(find "$DOTNET_ROOT/shared/Microsoft.NETCore.App" -mindepth 1 -maxdepth 1 -type d -print -quit)")
+cat >app.runtimeconfig.json <<EOF
+{
+  "runtimeOptions": {
+    "tfm": "net8.0",
+    "framework": {
+      "name": "Microsoft.NETCore.App",
+      "version": "$RUNTIME_VERSION"
+    }
+  }
+}
+EOF

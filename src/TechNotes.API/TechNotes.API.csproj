@@ -5,16 +5,19 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>technotes-api-9dba6e6c-03b6-48ab-a5f7-3de75d8273e7</UserSecretsId>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.3" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.3" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
+    <PackageReference Include="xunit" Version="2.9.3" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\TechNotes.Application\TechNotes.Application.csproj" />
     <ProjectReference Include="..\TechNotes.Infrastructure\TechNotes.Infrastructure.csproj" />

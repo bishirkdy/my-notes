@@ -11,7 +11,8 @@ public static class ApiServiceExtensions
             .AddApiControllers()
             .AddDatabaseSeeding(configuration)
             .AddSwaggerDocumentation()
-            .AddMediatR();
+            .AddMediatR()
+            .AddExecutionServices(configuration);
 
         return services;
     }

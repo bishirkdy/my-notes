@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export DOTNET_CLI_HOME=$PWD
+
+if [ -f .piston_library ]; then
+    echo "Compiled successfully."
+    exit 0
+fi
+
+dotnet app.dll "$@"

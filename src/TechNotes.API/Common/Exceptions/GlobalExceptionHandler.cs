@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using TechNotes.Application.Common.Exceptions;
 
 namespace TechNotes.API.Common.Exceptions;
 
@@ -20,8 +21,14 @@ public sealed class GlobalExceptionHandler(ILogger<GlobalExceptionHandler> logge
                 (StatusCodes.Status400BadRequest, "Invalid request.", exception.Message),
             UnauthorizedAccessException =>
                 (StatusCodes.Status401Unauthorized, "Unauthorized.", "You are not allowed to perform this action."),
+            ConflictException =>
+                (StatusCodes.Status409Conflict, "Conflict.", exception.Message),
             KeyNotFoundException =>
                 (StatusCodes.Status404NotFound, "Resource not found.", exception.Message),
+            ImageStorageUnavailableException =>
+                (StatusCodes.Status503ServiceUnavailable, "Image storage unavailable.", exception.Message),
+            ImageUploadFailedException =>
+                (StatusCodes.Status502BadGateway, "Image upload failed.", exception.Message),
             DbUpdateException =>
                 (StatusCodes.Status409Conflict, "Database conflict.", "The operation could not be completed."),
             OperationCanceledException =>
