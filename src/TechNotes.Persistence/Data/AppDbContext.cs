@@ -27,6 +27,7 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
     public DbSet<Comment> Comments => Set<Comment>();                   // Stores comments and replies.
     public DbSet<Attachment> Attachments => Set<Attachment>();          // Stores metadata for files attached to notes.
     public DbSet<Favorite> Favorites => Set<Favorite>();                // Stores notes marked as favorites by users.
+    public DbSet<ReadingProgress> ReadingProgress => Set<ReadingProgress>(); // Stores how far each user has read each note.
     public DbSet<NoteVersion> NoteVersions => Set<NoteVersion>();       // Stores historical versions of notes.
     public DbSet<Notification> Notifications => Set<Notification>();    // User notification table.
 

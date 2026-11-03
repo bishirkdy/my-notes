@@ -206,6 +206,14 @@ namespace TechNotes.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<Guid?>("ParentCategoryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
                     b.Property<DateTime?>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -214,8 +222,12 @@ namespace TechNotes.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ParentCategoryId");
+
                     b.HasIndex("UserId", "Name")
                         .IsUnique();
+
+                    b.HasIndex("UserId", "ParentCategoryId", "SortOrder");
 
                     b.ToTable("Categories");
                 });
@@ -532,6 +544,42 @@ namespace TechNotes.Persistence.Migrations
                     b.ToTable("NoteVersions");
                 });
 
+            modelBuilder.Entity("TechNotes.Domain.Entities.Notes.ReadingProgress", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("LastReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("NoteId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Percent")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("NoteId");
+
+                    b.HasIndex("UserId", "LastReadAtUtc");
+
+                    b.HasIndex("UserId", "NoteId")
+                        .IsUnique();
+
+                    b.ToTable("ReadingProgress");
+                });
+
             modelBuilder.Entity("TechNotes.Domain.Entities.Notes.Tag", b =>
                 {
                     b.Property<Guid>("Id")
@@ -646,11 +694,18 @@ namespace TechNotes.Persistence.Migrations
 
             modelBuilder.Entity("TechNotes.Domain.Entities.Notes.Category", b =>
                 {
+                    b.HasOne("TechNotes.Domain.Entities.Notes.Category", "ParentCategory")
+                        .WithMany("Children")
+                        .HasForeignKey("ParentCategoryId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("TechNotes.Domain.Entities.Identity.AppUser", "User")
                         .WithMany("Categories")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.Navigation("ParentCategory");
 
                     b.Navigation("User");
                 });
@@ -829,6 +884,25 @@ namespace TechNotes.Persistence.Migrations
                     b.Navigation("Note");
                 });
 
+            modelBuilder.Entity("TechNotes.Domain.Entities.Notes.ReadingProgress", b =>
+                {
+                    b.HasOne("TechNotes.Domain.Entities.Notes.Note", "Note")
+                        .WithMany("ReadingProgress")
+                        .HasForeignKey("NoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechNotes.Domain.Entities.Identity.AppUser", "User")
+                        .WithMany("ReadingProgress")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Note");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("TechNotes.Domain.Entities.Notes.Tag", b =>
                 {
                     b.HasOne("TechNotes.Domain.Entities.Identity.AppUser", null)
@@ -868,6 +942,8 @@ namespace TechNotes.Persistence.Migrations
 
                     b.Navigation("Notifications");
 
+                    b.Navigation("ReadingProgress");
+
                     b.Navigation("RefreshTokens");
 
                     b.Navigation("Tags");
@@ -882,6 +958,8 @@ namespace TechNotes.Persistence.Migrations
 
             modelBuilder.Entity("TechNotes.Domain.Entities.Notes.Category", b =>
                 {
+                    b.Navigation("Children");
+
                     b.Navigation("Notes");
                 });
 
@@ -906,6 +984,8 @@ namespace TechNotes.Persistence.Migrations
                     b.Navigation("Favorites");
 
                     b.Navigation("NoteTags");
+
+                    b.Navigation("ReadingProgress");
 
                     b.Navigation("Sections");
 

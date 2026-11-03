@@ -15,6 +15,17 @@ public static class NoteResponseMapper
             Visibility = note.Visibility,
             FolderId = note.FolderId,
             CategoryId = note.CategoryId,
+            CategoryName = note.Category?.Name,
+            CategoryParentName = note.Category?.ParentCategory?.Name,
+            CategoryPath = BuildCategoryPath(note.Category),
+            Tags = note.NoteTags
+                .Select(noteTag => noteTag.Tag.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(name => name)
+                .ToList(),
+            CreatedAtUtc = note.CreatedAtUtc,
+            UpdatedAtUtc = note.UpdatedAtUtc,
             Sections = note.Sections
                 .Where(section => section.ParentSectionId is null)
                 .OrderBy(section => section.SortOrder)
@@ -45,4 +56,16 @@ public static class NoteResponseMapper
                 .Select(MapSection)
                 .ToList()
         };
+
+    private static List<string> BuildCategoryPath(Category? category)
+    {
+        if (category is null)
+        {
+            return [];
+        }
+
+        return category.ParentCategory is null
+            ? [category.Name]
+            : [category.ParentCategory.Name, category.Name];
+    }
 }

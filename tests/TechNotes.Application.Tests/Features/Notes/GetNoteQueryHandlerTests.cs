@@ -9,11 +9,12 @@ namespace TechNotes.Application.Tests.Features.Notes;
 public sealed class GetNoteQueryHandlerTests
 {
     private readonly INoteRepository _repository = Substitute.For<INoteRepository>();
+    private readonly IReadingProgressRepository _progressRepository = Substitute.For<IReadingProgressRepository>();
     private readonly GetNoteQueryHandler _handler;
 
     public GetNoteQueryHandlerTests()
     {
-        _handler = new GetNoteQueryHandler(_repository);
+        _handler = new GetNoteQueryHandler(_repository, _progressRepository);
     }
 
     [Fact]

@@ -19,5 +19,7 @@ public sealed class UpdateNoteRequest
 
     public Guid? CategoryId { get; set; }
 
+    public List<string> Tags { get; set; } = [];
+
     public List<NoteSectionRequest> Sections { get; set; } = [];
 }

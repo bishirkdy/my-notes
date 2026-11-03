@@ -10,5 +10,9 @@ public class Category : BaseEntity
     public AppUser User { get; set; } = null!;
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
+    public Guid? ParentCategoryId { get; set; }
+    public Category? ParentCategory { get; set; }
+    public int SortOrder { get; set; }
+    public ICollection<Category> Children { get; set; } = [];
     public ICollection<Note> Notes { get; set; } = [];
 }

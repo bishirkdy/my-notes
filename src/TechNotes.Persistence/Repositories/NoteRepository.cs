@@ -68,6 +68,15 @@ namespace TechNotes.Persistence.Repositories
                 .OrderByDescending(note => note.CreatedAtUtc)
                 .ToListAsync(cancellationToken);
 
+        public async Task<IEnumerable<Note>> GetSharedWithMeAsync(Guid userId, CancellationToken cancellationToken = default) =>
+            await BuildContentQuery()
+                .AsNoTracking()
+                .Where(note =>
+                    note.UserId != userId &&
+                    note.Shares.Any(share => share.UserId == userId))
+                .OrderByDescending(note => note.UpdatedAtUtc ?? note.CreatedAtUtc)
+                .ToListAsync(cancellationToken);
+
         public async Task RemoveSectionsAsync(Note note, CancellationToken cancellationToken = default)
         {
             var sections = await _context.NoteSections
@@ -77,11 +86,32 @@ namespace TechNotes.Persistence.Repositories
             _context.NoteSections.RemoveRange(sections);
         }
 
+        public async Task RemoveTagsAsync(Note note, CancellationToken cancellationToken = default)
+        {
+            await _context.NoteTags
+                .Where(noteTag => noteTag.NoteId == note.Id)
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        public async Task AddTagsAsync(
+            IEnumerable<NoteTag> noteTags,
+            CancellationToken cancellationToken = default)
+        {
+            await _context.NoteTags.AddRangeAsync(noteTags, cancellationToken);
+        }
+
         private IQueryable<Note> BuildContentQuery() =>
             _context.Notes
                 .Include(note => note.Sections)
                     .ThenInclude(section => section.Contents)
+                .Include(note => note.Sections)
+                    .ThenInclude(section => section.Children)
+                        .ThenInclude(child => child.Contents)
                 .Include(note => note.Shares)
+                .Include(note => note.Category)
+                    .ThenInclude(category => category.ParentCategory)
+                .Include(note => note.NoteTags)
+                    .ThenInclude(noteTag => noteTag.Tag)
                 .AsSplitQuery();
     }
 }

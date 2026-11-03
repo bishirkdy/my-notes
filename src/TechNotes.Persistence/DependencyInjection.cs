@@ -27,6 +27,9 @@ namespace TechNotes.Persistence
             
             //Note
             services.AddScoped<INoteRepository, NoteRepository>();
+            services.AddScoped<IReadingProgressRepository, ReadingProgressRepository>();
+            services.AddScoped<ICategoryRepository, CategoryRepository>();
+            services.AddScoped<ITagRepository, TagRepository>();
 
             //Auth
             services.AddScoped<IAuthRepository, AuthRepository>();

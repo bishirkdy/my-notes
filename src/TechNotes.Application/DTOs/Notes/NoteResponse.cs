@@ -19,6 +19,20 @@ namespace TechNotes.Application.DTOs.Notes
 
         public Guid? CategoryId { get; set; }
 
+        public string? CategoryName { get; set; }
+
+        public string? CategoryParentName { get; set; }
+
+        public List<string> CategoryPath { get; set; } = [];
+
+        public List<string> Tags { get; set; } = [];
+
+        public DateTime CreatedAtUtc { get; set; }
+
+        public DateTime? UpdatedAtUtc { get; set; }
+
+        public ReadingProgressSummary? ReadingProgress { get; set; }
+
         // Returns the complete hierarchical note structure.
         public List<NoteSectionResponse> Sections { get; set; } = [];
     }

@@ -22,5 +22,6 @@ public sealed class Note : BaseEntity
     public ICollection<Comment> Comments { get; set; } = [];
     public ICollection<Attachment> Attachments { get; set; } = [];
     public ICollection<Favorite> Favorites { get; set; } = [];
+    public ICollection<ReadingProgress> ReadingProgress { get; set; } = [];
     public ICollection<NoteVersion> Versions { get; set; } = [];
 }

@@ -24,5 +24,6 @@ public sealed class AppUser : BaseEntity
     public ICollection<Note> Notes { get; set; } = new List<Note>();
     public ICollection<Comment> Comments { get; set; } = new List<Comment>();
     public ICollection<Favorite> Favorites { get; set; } = new List<Favorite>();
+    public ICollection<ReadingProgress> ReadingProgress { get; set; } = new List<ReadingProgress>();
     public ICollection<Notification> Notifications { get; set; } = new List<Notification>();
 }

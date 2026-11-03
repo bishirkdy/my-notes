@@ -19,7 +19,10 @@ public sealed class CreateNoteCommandHandlerTests
             .AddAsync(Arg.Do<Note>(note => created = note), Arg.Any<CancellationToken>())
             .Returns(Task.CompletedTask);
 
-        var handler = new CreateNoteCommandHandler(repository);
+        var handler = new CreateNoteCommandHandler(
+            repository,
+            Substitute.For<ICategoryRepository>(),
+            Substitute.For<ITagRepository>());
         var userId = Guid.NewGuid();
         var request = new CreateNoteRequest
         {

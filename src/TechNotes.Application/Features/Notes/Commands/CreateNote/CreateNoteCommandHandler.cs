@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using MediatR;
 using TechNotes.Application.DTOs.Notes;
 using TechNotes.Application.Features.Notes.Common;
@@ -6,13 +7,30 @@ using TechNotes.Domain.Entities.Notes;
 
 namespace TechNotes.Application.Features.Notes.Commands.CreateNote
 {
-    public sealed class CreateNoteCommandHandler(INoteRepository noteRepository)
+    public sealed class CreateNoteCommandHandler(
+        INoteRepository noteRepository,
+        ICategoryRepository categoryRepository,
+        ITagRepository tagRepository)
         : IRequestHandler<CreateNoteCommand, NoteResponse>
     {
         public async Task<NoteResponse> Handle(CreateNoteCommand command, CancellationToken cancellationToken)
         {
             var request = command.Request;
             NoteContentValidator.Validate(request.Sections);
+
+            Category? category = null;
+            if (request.CategoryId.HasValue)
+            {
+                category = await categoryRepository.GetForUserAsync(
+                    request.CategoryId.Value,
+                    command.UserId,
+                    cancellationToken);
+
+                if (category is null)
+                {
+                    throw new ValidationException("The selected category was not found.");
+                }
+            }
 
             var note = new Note
             {
@@ -21,8 +39,16 @@ namespace TechNotes.Application.Features.Notes.Commands.CreateNote
                 Visibility = request.Visibility,
                 Status = request.Status,
                 FolderId = request.FolderId,
-                CategoryId = request.CategoryId
+                CategoryId = category?.Id,
+                Category = category
             };
+
+            var noteTags = await NoteTagResolver.ResolveAsync(
+                request.Tags,
+                tagRepository,
+                cancellationToken);
+
+            note.NoteTags = noteTags;
 
             AddSections(note, request.Sections);
 

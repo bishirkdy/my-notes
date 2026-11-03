@@ -16,6 +16,12 @@ namespace TechNotes.Application.Interfaces.Repositories
 
         Task<IEnumerable<Note>> GetPublicNotesAsync(CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<Note>> GetSharedWithMeAsync(Guid userId, CancellationToken cancellationToken = default);
+
         Task RemoveSectionsAsync(Note note, CancellationToken cancellationToken = default);
+
+        Task RemoveTagsAsync(Note note, CancellationToken cancellationToken = default);
+
+        Task AddTagsAsync(IEnumerable<NoteTag> noteTags, CancellationToken cancellationToken = default);
     }
 }

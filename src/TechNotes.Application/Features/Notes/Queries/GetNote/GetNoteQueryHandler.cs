@@ -2,39 +2,60 @@ using MediatR;
 using TechNotes.Application.DTOs.Notes;
 using TechNotes.Application.Features.Notes.Common;
 using TechNotes.Application.Interfaces.Repositories;
+using TechNotes.Domain.Entities.Notes;
 using TechNotes.Domain.Enums;
 
 namespace TechNotes.Application.Features.Notes.Queries.GetNote
 {
-    public sealed class GetNoteQueryHandler(INoteRepository noteRepository)
+    public sealed class GetNoteQueryHandler(
+        INoteRepository noteRepository,
+        IReadingProgressRepository progressRepository)
         : IRequestHandler<GetNoteQuery, NoteResponse?>
     {
         public async Task<NoteResponse?> Handle(GetNoteQuery query, CancellationToken cancellationToken)
         {
             var note = await noteRepository.GetWithContentAsync(query.NoteId, cancellationToken);
-            if (note is null)
+            if (note is null || !CanRead(note, query.UserId))
             {
                 return null;
             }
 
-            if (query.UserId.HasValue && note.UserId == query.UserId.Value)
+            var response = NoteResponseMapper.Map(note);
+            if (query.UserId.HasValue)
             {
-                return NoteResponseMapper.Map(note);
+                var progress = await progressRepository.GetAsync(
+                    query.UserId.Value,
+                    note.Id,
+                    cancellationToken);
+
+                if (progress is not null)
+                {
+                    response.ReadingProgress = new ReadingProgressSummary
+                    {
+                        Percent = progress.Percent,
+                        LastReadAtUtc = progress.LastReadAtUtc
+                    };
+                }
+            }
+
+            return response;
+        }
+
+        private static bool CanRead(Note note, Guid? userId)
+        {
+            if (userId.HasValue && note.UserId == userId.Value)
+            {
+                return true;
             }
 
             if (note.Visibility == NoteVisibility.Public && note.Status == NoteStatus.Published)
             {
-                return NoteResponseMapper.Map(note);
+                return true;
             }
 
-            if (query.UserId.HasValue &&
+            return userId.HasValue &&
                 note.Visibility == NoteVisibility.Shared &&
-                note.Shares.Any(share => share.UserId == query.UserId.Value))
-            {
-                return NoteResponseMapper.Map(note);
-            }
-
-            return null;
+                note.Shares.Any(share => share.UserId == userId.Value);
         }
     }
 }

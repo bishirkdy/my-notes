@@ -16,13 +16,40 @@ public sealed class UpdateNoteCommandHandlerTests
         var note = new Note { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Title = "Existing" };
         repository.GetByIdAsync(note.Id, Arg.Any<CancellationToken>()).Returns(note);
 
-        var handler = new UpdateNoteCommandHandler(repository);
+        var handler = new UpdateNoteCommandHandler(
+            repository,
+            Substitute.For<ICategoryRepository>(),
+            Substitute.For<ITagRepository>());
         var result = await handler.Handle(
-            new UpdateNoteCommand(note.Id, Guid.NewGuid(), new UpdateNoteRequest { Title = "Updated" }),
+            new UpdateNoteCommand(note.Id, Guid.NewGuid(), false, new UpdateNoteRequest { Title = "Updated" }),
             CancellationToken.None);
 
         Assert.Null(result);
         await repository.DidNotReceive().SaveChangesAsync(Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Handle_AllowsAdminToUpdateAnotherUsersNote()
+    {
+        var repository = Substitute.For<INoteRepository>();
+        var note = new Note { Id = Guid.NewGuid(), UserId = Guid.NewGuid(), Title = "Existing" };
+        repository.GetByIdAsync(note.Id, Arg.Any<CancellationToken>()).Returns(note);
+        repository.GetWithContentAsync(note.Id, Arg.Any<CancellationToken>()).Returns(note);
+
+        var handler = new UpdateNoteCommandHandler(
+            repository,
+            Substitute.For<ICategoryRepository>(),
+            Substitute.For<ITagRepository>());
+        var result = await handler.Handle(
+            new UpdateNoteCommand(
+                note.Id,
+                Guid.NewGuid(),
+                true,
+                new UpdateNoteRequest { Title = "Updated" }),
+            CancellationToken.None);
+
+        Assert.NotNull(result);
+        Assert.Equal("Updated", note.Title);
     }
 
     [Fact]
@@ -92,9 +119,12 @@ public sealed class UpdateNoteCommandHandlerTests
             ]
         };
 
-        var handler = new UpdateNoteCommandHandler(repository);
+        var handler = new UpdateNoteCommandHandler(
+            repository,
+            Substitute.For<ICategoryRepository>(),
+            Substitute.For<ITagRepository>());
         var result = await handler.Handle(
-            new UpdateNoteCommand(note.Id, note.UserId, request),
+            new UpdateNoteCommand(note.Id, note.UserId, false, request),
             CancellationToken.None);
 
         Assert.NotNull(result);
@@ -130,8 +160,11 @@ public sealed class UpdateNoteCommandHandlerTests
             Sections = [new NoteSectionRequest { Title = "Section" }]
         };
 
-        var handler = new UpdateNoteCommandHandler(repository);
-        await handler.Handle(new UpdateNoteCommand(note.Id, note.UserId, request), CancellationToken.None);
+        var handler = new UpdateNoteCommandHandler(
+            repository,
+            Substitute.For<ICategoryRepository>(),
+            Substitute.For<ITagRepository>());
+        await handler.Handle(new UpdateNoteCommand(note.Id, note.UserId, false, request), CancellationToken.None);
 
         Assert.Equal(NoteVisibility.Shared, note.Visibility);
         Assert.Equal(NoteStatus.Published, note.Status);

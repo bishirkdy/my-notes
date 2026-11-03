@@ -83,6 +83,96 @@ public sealed class NoteContentValidatorTests
     }
 
     [Fact]
+    public void Validate_AcceptsImageContentWithUrlAndPublicId()
+    {
+        var sections = new[]
+        {
+            new NoteSectionRequest
+            {
+                Title = "Screenshots",
+                Contents =
+                [
+                    new NoteContentRequest
+                    {
+                        Type = NoteContentType.Image,
+                        Data = """{"url":"https://res.cloudinary.com/demo/image/upload/note.png","publicId":"technotes/note","width":1200,"height":800}"""
+                    }
+                ]
+            }
+        };
+
+        NoteContentValidator.Validate(sections);
+    }
+
+    [Fact]
+    public void Validate_AcceptsRootRelativeImageUrl()
+    {
+        var sections = new[]
+        {
+            new NoteSectionRequest
+            {
+                Title = "Screenshots",
+                Contents =
+                [
+                    new NoteContentRequest
+                    {
+                        Type = NoteContentType.Image,
+                        Data = """{"url":"/illustrations/handdrawn/v1/note.svg","publicId":"illustrations/handdrawn/v1/note","width":1600,"height":900}"""
+                    }
+                ]
+            }
+        };
+
+        NoteContentValidator.Validate(sections);
+    }
+
+    [Fact]
+    public void Validate_RejectsImageWithoutUrl()
+    {
+        var sections = new[]
+        {
+            new NoteSectionRequest
+            {
+                Title = "Screenshots",
+                Contents =
+                [
+                    new NoteContentRequest
+                    {
+                        Type = NoteContentType.Image,
+                        Data = """{"publicId":"technotes/note"}"""
+                    }
+                ]
+            }
+        };
+
+        var error = Assert.Throws<ArgumentException>(() => NoteContentValidator.Validate(sections));
+        Assert.Contains("valid URL", error.Message);
+    }
+
+    [Fact]
+    public void Validate_RejectsImageWithoutPublicId()
+    {
+        var sections = new[]
+        {
+            new NoteSectionRequest
+            {
+                Title = "Screenshots",
+                Contents =
+                [
+                    new NoteContentRequest
+                    {
+                        Type = NoteContentType.Image,
+                        Data = """{"url":"https://res.cloudinary.com/demo/image/upload/note.png"}"""
+                    }
+                ]
+            }
+        };
+
+        var error = Assert.Throws<ArgumentException>(() => NoteContentValidator.Validate(sections));
+        Assert.Contains("public ID", error.Message);
+    }
+
+    [Fact]
     public void Validate_RejectsInvalidNestedSection()
     {
         var sections = new[]

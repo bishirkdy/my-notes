@@ -11,7 +11,7 @@ namespace TechNotes.Application.Features.Notes.Commands.DeleteNote
         public async Task<bool> Handle(DeleteNoteCommand command, CancellationToken cancellationToken)
         {
             var note = await noteRepository.GetByIdAsync(command.NoteId,cancellationToken);
-            if (note is null || note.UserId != command.UserId)
+            if (note is null || (!command.IsAdmin && note.UserId != command.UserId))
             {
                 return false;
             }
