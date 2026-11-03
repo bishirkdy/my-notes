@@ -1,0 +1,10 @@
+.git
+.gitignore
+.vs
+**/bin
+**/obj
+outputs
+work
+.env
+Dockerfile
+compose.yaml

@@ -1,0 +1,158 @@
+
+name: technotes
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: technotes
+      POSTGRES_USER: technotes
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-technotes}
+    volumes:
+      - technotes-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U technotes -d technotes"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: ${SQLSERVER_SA_PASSWORD:?Set SQLSERVER_SA_PASSWORD in .env}
+    volumes:
+      - sqlserver-data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$${MSSQL_SA_PASSWORD}\" -C -Q \"SELECT 1\" -b"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - sandbox
+
+  postgres-exec:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: technotes_admin
+      POSTGRES_PASSWORD: ${SQL_EXEC_POSTGRES_ADMIN_PASSWORD:?Set SQL_EXEC_POSTGRES_ADMIN_PASSWORD in .env}
+    volumes:
+      - postgres-exec-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U technotes_admin -d postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - sandbox
+
+  piston:
+    build:
+      context: ./execution/piston
+      dockerfile: Dockerfile
+    image: technotes-piston
+    restart: unless-stopped
+    privileged: true
+    environment:
+      PISTON_OUTPUT_MAX_SIZE: "65536"
+      PISTON_COMPILE_MEMORY_LIMIT: "3221225472"
+      PISTON_RUN_MEMORY_LIMIT: "1073741824"
+      PISTON_COMPILE_TIMEOUT: "20000"
+      PISTON_RUN_TIMEOUT: "10000"
+
+  piston-bootstrap:
+    image: curlimages/curl:8.10.1
+    restart: "no"
+    depends_on:
+      - piston
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        until curl -fsS http://piston:2000/api/v2/runtimes >/dev/null; do sleep 1; done
+        runtimes=$$(curl -fsS http://piston:2000/api/v2/runtimes)
+        install_package() {
+          package="$$1"
+          language="$$2"
+          if echo "$$runtimes" | grep -q "\"language\":\"$$language\""; then
+            return
+          fi
+          curl -fsS -X POST http://piston:2000/api/v2/packages \
+            -H 'Content-Type: application/json' \
+            -d "$$package" >/dev/null || {
+              echo "Package installation failed: $$package" >&2
+              exit 1
+            }
+        }
+        install_package '{"language":"node","version":"20.11.1"}' javascript
+        install_package '{"language":"bash","version":"5.2.0"}' bash
+        install_package '{"language":"sqlite3","version":"3.36.0"}' sqlite3
+        runtimes=$$(curl -fsS http://piston:2000/api/v2/runtimes)
+        for language in javascript bash sqlite3; do
+          echo "$$runtimes" | grep -q "\"language\":\"$$language\"" || {
+            echo "Package installation failed: $$language" >&2
+            exit 1
+          }
+        done
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${API_PORT:-8081}:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=technotes;Username=technotes;Password=${POSTGRES_PASSWORD:-technotes}
+      Execution__PistonBaseUrl: http://piston:2000
+      Execution__RateLimitPermitLimit: "60"
+      Execution__SqlServerAdminConnectionString: Server=sqlserver,1433;Database=master;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?Set SQLSERVER_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True
+      Execution__SqlServerSandboxConnectionString: Server=sqlserver,1433;Database=master;User Id=technotes_sandbox;Password=${SQLSERVER_SANDBOX_PASSWORD:?Set SQLSERVER_SANDBOX_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True
+      Execution__PostgresAdminConnectionString: Host=postgres-exec;Port=5432;Database=postgres;Username=technotes_admin;Password=${SQL_EXEC_POSTGRES_ADMIN_PASSWORD:?Set SQL_EXEC_POSTGRES_ADMIN_PASSWORD in .env}
+      Execution__PostgresSandboxConnectionString: Host=postgres-exec;Port=5432;Database=postgres;Username=technotes_sandbox;Password=${SQL_EXEC_POSTGRES_SANDBOX_PASSWORD:?Set SQL_EXEC_POSTGRES_SANDBOX_PASSWORD in .env}
+      Jwt__Issuer: TechNotes.API
+      Jwt__Audience: TechNotes.Client
+      Jwt__Key: ${JWT_KEY:?Set JWT_KEY in .env}
+      AdminSeed__Email: ${ADMIN_EMAIL:-admin@technotes.local}
+      AdminSeed__UserName: ${ADMIN_USERNAME:-admin}
+      AdminSeed__Password: ${ADMIN_PASSWORD:-}
+      Cloudinary__CloudName: ${CLOUDINARY_CLOUD_NAME:-}
+      Cloudinary__ApiKey: ${CLOUDINARY_API_KEY:-}
+      Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
+      Cloudinary__Folder: ${CLOUDINARY_FOLDER:-technotes}
+      HttpsRedirection__Enabled: "false"
+      Database__ApplyMigrationsOnStartup: "true"
+      Database__SeedOnStartup: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      piston:
+        condition: service_started
+      sqlserver:
+        condition: service_healthy
+      postgres-exec:
+        condition: service_healthy
+    networks:
+      - default
+      - sandbox
+    develop:
+      watch:
+        - action: rebuild
+          path: ./src
+        - action: rebuild
+          path: ./Dockerfile
+
+volumes:
+  technotes-db:
+  sqlserver-data:
+  postgres-exec-data:
+
+networks:
+  sandbox:
+    internal: true
