@@ -93,6 +93,7 @@ services:
       # Configure your ASP.NET CORS policy to read Cors:AllowedOrigins.
       Cors__AllowedOrigins__0: ${FRONTEND_URL:?Set FRONTEND_URL}
 
+      Execution__Enabled: "true"
       Execution__PistonBaseUrl: http://piston:2000
       Execution__RateLimitPermitLimit: ${EXECUTION_RATE_LIMIT_PERMIT_LIMIT:-60}
       Execution__SqlServerAdminConnectionString: Server=sqlserver,1433;Database=master;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?Set SQLSERVER_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True

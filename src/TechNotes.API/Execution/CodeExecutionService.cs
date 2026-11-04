@@ -92,6 +92,14 @@ public sealed class CodeExecutionService
             _logger.LogWarning(exception, "Piston rejected an execution for {Language}.", language);
             return Failure(language, exception.Message, started);
         }
+        catch (HttpRequestException exception)
+        {
+            _logger.LogWarning(exception, "The execution runtime is unavailable for {Language}.", language);
+            return Failure(
+                language,
+                "The code execution runtime is unavailable on this deployment.",
+                started);
+        }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
         {
             return Failure(language, "The execution timed out.", started);

@@ -26,10 +26,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 
 ENV ASPNETCORE_ENVIRONMENT=Production
-ENV ASPNETCORE_URLS=http://+:${PORT:-10000}
 
-EXPOSE 10000
+EXPOSE 8080
 
 COPY --from=build /app/publish .
 
-ENTRYPOINT ["dotnet", "TechNotes.API.dll"]
+ENTRYPOINT ["/bin/sh", "-c", "if [ -n \"$ASPNETCORE_URLS\" ]; then exec dotnet TechNotes.API.dll --urls \"$ASPNETCORE_URLS\"; else exec dotnet TechNotes.API.dll --urls \"http://0.0.0.0:${PORT:-8080}\"; fi"]

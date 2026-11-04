@@ -17,17 +17,39 @@ public static class DatabaseExtensions
     {
         using var scope = app.Services.CreateScope();
 
-        if (app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup"))
+        var applyMigrations = app.Configuration.GetValue<bool>("Database:ApplyMigrationsOnStartup");
+        var seedDatabase = app.Configuration.GetValue<bool>("Database:SeedOnStartup");
+
+        if (!applyMigrations && seedDatabase)
         {
-            var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            await dbContext.Database.MigrateAsync();
+            app.Logger.LogWarning(
+                "Database seeding is enabled while migrations are disabled. Ensure the schema already exists.");
         }
 
-        if (!app.Configuration.GetValue<bool>("Database:SeedOnStartup"))
+        try
         {
-            return;
-        }
+            if (applyMigrations)
+            {
+                app.Logger.LogInformation("Applying database migrations.");
+                var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await dbContext.Database.MigrateAsync();
+            }
 
-        await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
+            if (!seedDatabase)
+            {
+                app.Logger.LogInformation("Database seeding is disabled.");
+                return;
+            }
+
+            app.Logger.LogInformation("Seeding database.");
+            await scope.ServiceProvider.GetRequiredService<DatabaseSeeder>().SeedAsync();
+        }
+        catch (Exception exception)
+        {
+            app.Logger.LogCritical(
+                exception,
+                "Database initialization failed. Check NEON_CONNECTION_STRING (or ConnectionStrings__DefaultConnection) and the Neon database status.");
+            throw;
+        }
     }
 }

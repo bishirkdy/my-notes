@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using TechNotes.API.Execution;
 
 namespace TechNotes.API.Controllers.Executions;
@@ -8,7 +9,9 @@ namespace TechNotes.API.Controllers.Executions;
 [ApiController]
 [Route("api/v1/executions")]
 [AllowAnonymous]
-public sealed class ExecutionsController(CodeExecutionService execution) : ControllerBase
+public sealed class ExecutionsController(
+    CodeExecutionService execution,
+    IOptions<ExecutionOptions> options) : ControllerBase
 {
     [HttpGet("languages")]
     public IActionResult GetLanguages()
@@ -26,6 +29,19 @@ public sealed class ExecutionsController(CodeExecutionService execution) : Contr
         [FromBody] ExecuteCodeRequest request,
         CancellationToken cancellationToken)
     {
+        if (!options.Value.Enabled)
+        {
+            return Ok(new ExecuteCodeResponse(
+                false,
+                "run",
+                string.Empty,
+                "Code execution is disabled on this deployment.",
+                [],
+                0,
+                request.Language,
+                null));
+        }
+
         var result = await execution.ExecuteAsync(request, cancellationToken);
         return Ok(result);
     }

@@ -10,7 +10,19 @@ public static class ExecutionExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        var executionOptions = configuration
+            .GetSection(ExecutionOptions.SectionName)
+            .Get<ExecutionOptions>() ?? new ExecutionOptions();
+
         services.Configure<ExecutionOptions>(configuration.GetSection(ExecutionOptions.SectionName));
+
+        if (executionOptions.Enabled &&
+            (!Uri.TryCreate(executionOptions.PistonBaseUrl, UriKind.Absolute, out var pistonUri) ||
+             (pistonUri.Scheme != Uri.UriSchemeHttp && pistonUri.Scheme != Uri.UriSchemeHttps)))
+        {
+            throw new InvalidOperationException(
+                "Execution is enabled but PISTON_BASE_URL (or Execution__PistonBaseUrl) is not a valid http(s) URL.");
+        }
 
         services.AddHttpClient<PistonClient>((serviceProvider, client) =>
         {
@@ -25,12 +37,16 @@ public static class ExecutionExtensions
         services.AddSingleton<CSharpSnippetCompiler>();
         services.AddSingleton<SqlServerSandbox>();
         services.AddSingleton<PostgresSandbox>();
-        services.AddHostedService<SqlSandboxInitializer>();
         services.AddSingleton<CodeExecutionService>();
 
-        var executionOptions = configuration
-            .GetSection(ExecutionOptions.SectionName)
-            .Get<ExecutionOptions>() ?? new ExecutionOptions();
+        if (executionOptions.Enabled &&
+            (!string.IsNullOrWhiteSpace(executionOptions.SqlServerAdminConnectionString) ||
+             !string.IsNullOrWhiteSpace(executionOptions.SqlServerSandboxConnectionString) ||
+             !string.IsNullOrWhiteSpace(executionOptions.PostgresAdminConnectionString) ||
+             !string.IsNullOrWhiteSpace(executionOptions.PostgresSandboxConnectionString)))
+        {
+            services.AddHostedService<SqlSandboxInitializer>();
+        }
 
         services.AddRateLimiter(options =>
         {

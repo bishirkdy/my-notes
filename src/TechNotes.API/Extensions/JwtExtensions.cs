@@ -16,7 +16,8 @@ public static class JwtExtensions
             jwtOptions.Key.Length < 32 ||
             jwtOptions.Key.StartsWith("CHANGE_ME", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException("Configure a secure JWT key with at least 32 characters.");
+            throw new InvalidOperationException(
+                "Configure a secure JWT key with at least 32 characters. Set JWT_KEY (or Jwt__Key) in the deployment environment.");
         }
 
         services.Configure<JwtOptions>(configuration.GetSection(JwtOptions.SectionName));

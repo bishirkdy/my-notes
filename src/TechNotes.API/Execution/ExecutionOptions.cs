@@ -4,6 +4,8 @@ public sealed class ExecutionOptions
 {
     public const string SectionName = "Execution";
 
+    public bool Enabled { get; set; } = true;
+
     public string PistonBaseUrl { get; set; } = "http://127.0.0.1:2000";
     public int MaxCodeBytes { get; set; } = 131_072;
     public int MaxOutputBytes { get; set; } = 65_536;
