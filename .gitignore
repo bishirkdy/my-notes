@@ -1,16 +1,29 @@
 # Visual Studio
 .vs/
+*.user
+*.suo
 
 # Build results
 bin/
 obj/
 
-# User-specific files
-*.user
-*.suo
-
-# Environment files
+# Environment files and secrets
 .env
+.env.*
+!.env.example
+!.env.production.example
+!.env.production
 
-#Work folder
+# User-specific files
+*.userosscache
+*.sln.docstates
+
+# Work folder
 work/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
