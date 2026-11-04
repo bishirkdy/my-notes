@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TechNotes.Application.DTOs.Notes;
 using TechNotes.Application.Features.Notes.Common;
 using TechNotes.Domain.Enums;
@@ -124,6 +125,31 @@ public sealed class NoteContentValidatorTests
         };
 
         NoteContentValidator.Validate(sections);
+    }
+
+    [Theory]
+    [InlineData("//example.com/image.png")]
+    [InlineData("file:///tmp/image.png")]
+    public void Validate_RejectsUnsupportedImageUrl(string url)
+    {
+        var sections = new[]
+        {
+            new NoteSectionRequest
+            {
+                Title = "Screenshots",
+                Contents =
+                [
+                    new NoteContentRequest
+                    {
+                        Type = NoteContentType.Image,
+                        Data = JsonSerializer.Serialize(new { url, publicId = "tests/image" })
+                    }
+                ]
+            }
+        };
+
+        var error = Assert.Throws<ArgumentException>(() => NoteContentValidator.Validate(sections));
+        Assert.Contains("valid URL", error.Message);
     }
 
     [Fact]

@@ -94,16 +94,20 @@ public static class NoteContentValidator
 
     private static bool IsValidImageUrl(string url)
     {
+        if (url.StartsWith('/'))
+        {
+            return !url.StartsWith("//")
+                && !url.Contains("..")
+                && !url.Contains('\\')
+                && url.All(character => !char.IsControl(character));
+        }
+
         if (Uri.TryCreate(url, UriKind.Absolute, out var absolute))
         {
             return absolute.Scheme == Uri.UriSchemeHttps || absolute.Scheme == Uri.UriSchemeHttp;
         }
 
-        return url.StartsWith('/')
-            && !url.StartsWith("//")
-            && !url.Contains("..")
-            && !url.Contains('\\')
-            && url.All(character => !char.IsControl(character));
+        return false;
     }
 
     private static bool TryGetString(JsonElement element, string propertyName, out string value)
