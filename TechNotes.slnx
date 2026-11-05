@@ -1,7 +1,10 @@
 <Solution>
   <Folder Name="/Solution Items/">
+    <File Path=".dockerignore" />
     <File Path=".env" />
+    <File Path=".env.production" />
     <File Path=".gitignore" />
+    <File Path="compose.production.yaml" />
     <File Path="compose.yaml" />
     <File Path="Dockerfile" />
   </Folder>
@@ -11,8 +14,5 @@
     <Project Path="src/TechNotes.Domain/TechNotes.Domain.csproj" />
     <Project Path="src/TechNotes.Infrastructure/TechNotes.Infrastructure.csproj" />
     <Project Path="src/TechNotes.Persistence/TechNotes.Persistence.csproj" />
-  </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/TechNotes.Application.Tests/TechNotes.Application.Tests.csproj" />
   </Folder>
 </Solution>
