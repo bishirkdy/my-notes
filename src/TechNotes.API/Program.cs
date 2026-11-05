@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using TechNotes.API.Authorization;
 using TechNotes.API.Execution;
 using TechNotes.API.Extensions;
 using TechNotes.Application;
@@ -19,6 +21,21 @@ builder.Services
     .AddApiServices(builder.Configuration);
 
 var (allowedOrigins, invalidOrigins) = ReadAllowedOrigins(builder.Configuration);
+var crossSiteCookies = !builder.Environment.IsDevelopment();
+
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "X-XSRF-TOKEN";
+    options.Cookie.Name = AuthCookieNames.Csrf;
+    options.Cookie.HttpOnly = true;
+    options.Cookie.Path = AuthCookieNames.CsrfPath;
+    options.Cookie.SecurePolicy = crossSiteCookies
+        ? CookieSecurePolicy.Always
+        : CookieSecurePolicy.SameAsRequest;
+    options.Cookie.SameSite = crossSiteCookies
+        ? SameSiteMode.None
+        : SameSiteMode.Lax;
+});
 
 builder.Services.AddCors(options =>
 {

@@ -20,6 +20,7 @@ public sealed class ExecutionsController(
     }
 
     [HttpPost]
+    [IgnoreAntiforgeryToken]
     [EnableRateLimiting("executions")]
     [RequestSizeLimit(131_072)]
     [ProducesResponseType<ExecuteCodeResponse>(StatusCodes.Status200OK)]

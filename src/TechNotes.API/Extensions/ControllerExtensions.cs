@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Mvc;
 using TechNotes.Application.Common.Images;
 
 namespace TechNotes.API.Extensions;
@@ -11,7 +12,10 @@ public static class ControllerExtensions
         {
             options.MultipartBodyLengthLimit = ImageFileValidator.MaxFileSizeBytes + (512 * 1024);
         });
-        services.AddControllers();
+        services.AddControllersWithViews(options =>
+        {
+            options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
+        });
             //.ConfigureApiBehaviorOptions(options =>
             //{
             //    //InvalidModelStateResponseFactory lets you customize the response returned when model validation fails.

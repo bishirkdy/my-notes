@@ -27,6 +27,7 @@ public static class ApplicationExtensions
         app.UseRateLimiter();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseAntiforgery();
         app.MapControllers();
 
         return app;

@@ -11,7 +11,6 @@ using Microsoft.Extensions.Options;
 
 
 namespace TechNotes.Infrastructure.Services.Auth;
-// Creates signed JWT access tokens. These tokens are short-lived and sent by the client in the Authorization header.
 public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenService
 {
     private readonly JwtOptions _options = options.Value;

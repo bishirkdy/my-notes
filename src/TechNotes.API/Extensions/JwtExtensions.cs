@@ -1,6 +1,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using TechNotes.API.Authorization;
 using TechNotes.Application.Settings.Auth;
 
 namespace TechNotes.API.Extensions;
@@ -25,6 +26,7 @@ public static class JwtExtensions
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims = true;
                 options.TokenValidationParameters =
                     new TokenValidationParameters
                     {
@@ -43,6 +45,20 @@ public static class JwtExtensions
 
                         ClockSkew = TimeSpan.Zero
                     };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        if (string.IsNullOrWhiteSpace(context.Token) &&
+                            context.Request.Cookies.TryGetValue(AuthCookieNames.AccessToken, out var accessToken))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
             });
 
         return services;
