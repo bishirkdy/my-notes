@@ -109,7 +109,7 @@ services:
       - "${API_PORT:-8081}:8080"
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=technotes;Username=technotes;Password=${POSTGRES_PASSWORD:-technotes}
+      ConnectionStrings__DefaultConnection: "${NEON_CONNECTION_STRING:?Set NEON_CONNECTION_STRING in .env}"
       Execution__PistonBaseUrl: http://piston:2000
       Execution__RateLimitPermitLimit: "60"
       Execution__SqlServerAdminConnectionString: Server=sqlserver,1433;Database=master;User Id=sa;Password=${SQLSERVER_SA_PASSWORD:?Set SQLSERVER_SA_PASSWORD in .env};Encrypt=True;TrustServerCertificate=True
@@ -127,8 +127,8 @@ services:
       Cloudinary__ApiSecret: ${CLOUDINARY_API_SECRET:-}
       Cloudinary__Folder: ${CLOUDINARY_FOLDER:-technotes}
       HttpsRedirection__Enabled: "false"
-      Database__ApplyMigrationsOnStartup: "true"
-      Database__SeedOnStartup: "true"
+      Database__ApplyMigrationsOnStartup: "false"
+      Database__SeedOnStartup: "false"
     depends_on:
       db:
         condition: service_healthy
