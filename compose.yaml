@@ -2,21 +2,6 @@
 name: technotes
 
 services:
-  db:
-    image: postgres:17-alpine
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: technotes
-      POSTGRES_USER: technotes
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-technotes}
-    volumes:
-      - technotes-db:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U technotes -d technotes"]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     restart: unless-stopped
@@ -130,8 +115,6 @@ services:
       Database__ApplyMigrationsOnStartup: "false"
       Database__SeedOnStartup: "false"
     depends_on:
-      db:
-        condition: service_healthy
       piston:
         condition: service_started
       sqlserver:
@@ -149,7 +132,6 @@ services:
           path: ./Dockerfile
 
 volumes:
-  technotes-db:
   sqlserver-data:
   postgres-exec-data:
 
