@@ -19,8 +19,7 @@ namespace TechNotes.Infrastructure
             services.AddScoped<IPasswordHasher, PasswordHasher>();
 
             //Images
-            services.Configure<CloudinarySettings>(
-                configuration.GetSection(CloudinarySettings.SectionName));
+            services.Configure<CloudinarySettings>(configuration.GetSection(CloudinarySettings.SectionName));
             services.AddSingleton<IImageStorageService, CloudinaryImageStorageService>();
 
             return services;
